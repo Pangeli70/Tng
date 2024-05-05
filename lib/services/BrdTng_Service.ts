@@ -1,19 +1,19 @@
 /** ---------------------------------------------------------------------------
- * @module Brd/Tng
- * @author APG
+ * @module [BrdTng]
+ * @author [APG] Angeli Paolo Giusto
  * @version 0.1 APG 20220909 Alpha version
  * @version 0.2 APG 20230416 Moved to its own microservice
- * @version 0.3 APG 20230712 Imporved Regex for JS recognition
+ * @version 0.3 APG 20230712 Improved Regex for JS recognition
  * ----------------------------------------------------------------------------
  */
 
-type TBrdTngTemplateFunction = (a: any) => string;
+type BrdTng_TemplateFunction = (a: any) => string;
 
 
 /**
  * Modified by APG, starting from the original Drash Template Engine named Jae
  */
-export class BrdTngService {
+export class BrdTng_Service {
 
     /** Master and partials files */
     static #filesCache: Map<string, string> = new Map();
@@ -22,7 +22,7 @@ export class BrdTngService {
     static #chunksCache: Map<number, string> = new Map();
 
     /** Processed javascript functions */
-    static #functionsCache: Map<string, TBrdTngTemplateFunction> = new Map();
+    static #functionsCache: Map<string, BrdTng_TemplateFunction> = new Map();
 
     /** Path to the templates folder  */
     static #templatesPath = "./srv/templates";
@@ -62,7 +62,7 @@ export class BrdTngService {
 
         const noCache = (<any>atemplateData).noCache ? (<any>atemplateData).noCache : false;
 
-        let templateFunction: TBrdTngTemplateFunction;
+        let templateFunction: BrdTng_TemplateFunction;
 
         let weHaveNewFunctionToStoreInCache = false;
 
@@ -73,7 +73,7 @@ export class BrdTngService {
         else {
             const js = await this.#getTemplateAsJavascript(templateName, noCache);
             try {
-                templateFunction = new Function("templateData", js) as TBrdTngTemplateFunction;
+                templateFunction = new Function("templateData", js) as BrdTng_TemplateFunction;
                 weHaveNewFunctionToStoreInCache = true;
                 console.log("BrdTngService - Rebuilt the function for " + templateName);
             } catch (err) {

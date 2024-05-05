@@ -1,9 +1,16 @@
 /** ---------------------------------------------------------------------------
  * @module [BrdTng]
  * @author [APG] Angeli Paolo Giusto
- * @version 0.1 APG 20220909 Alpha version
- * @version 0.2 APG 20230416 Moved to its own microservice
+ * @version 0.1 APG 20230712 Components
  * ----------------------------------------------------------------------------
  */
 
-export * as Tng from "./lib/mod.ts";
+import { Uts } from "../deps.ts";
+
+
+
+export interface BrdTng_IComponent {
+
+    render(alang?: Uts.BrdUts_TLanguage): string;
+
+}

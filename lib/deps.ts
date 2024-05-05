@@ -1,11 +1,11 @@
 /** ---------------------------------------------------------------------------
- * @module Brd/Tng
- * @author APG
- * @version 0.3 APG 20230712 Components
+ * @module [BrdTng]
+ * @author [APG] Angeli Paolo Giusto
+ * @version 0.1 APG 20240504
  * ----------------------------------------------------------------------------
  */
-export interface IBrdTngComponent {
 
-    render(): string;
 
-}
+
+// Local monorepo
+export * from "../../Uts/mod.ts";
