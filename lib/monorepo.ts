@@ -15,5 +15,5 @@ Local << */
 // Brd Github private repos
 
 // Github >>>
-export * from "https://raw.githubusercontent.com/Pangeli70/Uts/master/mod.ts";
+export * from "https://raw.githubusercontent.com/Bredasys/Uts/master/mod.ts";
 // Github <<<
