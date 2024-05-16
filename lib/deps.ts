@@ -5,7 +5,4 @@
  * ----------------------------------------------------------------------------
  */
 
-
-
-// Local monorepo
-export * from "../../Uts/mod.ts";
+export * from "./monorepo.ts";
