@@ -6,9 +6,6 @@
  */
 
 import {
-    Uts
-} from "../deps.ts";
-import {
     BrdTng_IComponent
 } from "../interfaces/BrdTng_IComponent.ts";
 
@@ -58,7 +55,13 @@ export class BrdTng_NumericValue_Component implements BrdTng_IComponent {
 
         const post = (this._post) ? ` ${this._post}` : "";
 
-        r.push(`<label for="${this._id} ">${this._label}${post}</label>`);
+        let limits = "";
+        if (this._min) limits += ` min:${this._min}`;
+        if (this._max) limits += ` max:${this._max}`;
+        if (this._step) limits += ` step:${this._step}`;
+        if (limits != "") limits = ` <span style="font-size: 0.8rem; font-style:italic">(${limits} )</span>`
+
+        r.push(`<label for="${this._id} ">${this._label}${post}${limits}</label>`);
         r.push(`
             <input type="number" id="${this._id}" name="${this._id}"
                 ${value}${min}${max}${step}${required}>`);
