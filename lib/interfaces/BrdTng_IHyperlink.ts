@@ -8,7 +8,9 @@
 import { Uts } from "../deps.ts";
 
 
-
+/**
+ * Hyperlink multilingua per gestire menu e liste di collegamenti
+ */
 export interface BrdTng_IHyperlink {
 
     url: string;
