@@ -8,7 +8,6 @@
 
 
 
-
 export interface BrdTng_IPageData {
 
     microservice: {

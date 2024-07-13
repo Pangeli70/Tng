@@ -8,8 +8,12 @@
  * ----------------------------------------------------------------------------
  */
 
-import { Uts } from "../deps.ts";
-import { BrdTng_IPageData } from "../interfaces/BrdTng_IPageData.ts";
+import {
+    Uts
+} from "../deps.ts";
+import {
+    BrdTng_IPageData
+} from "../interfaces/BrdTng_IPageData.ts";
 
 type BrdTng_TemplateFunction = (a: any) => string;
 
@@ -19,7 +23,7 @@ type BrdTng_TemplateFunction = (a: any) => string;
  */
 export class BrdTng_Service {
 
-    static readonly REMOTE_PREFIX = "http"; 
+    static readonly REMOTE_PREFIX = "http";
 
     /** Master and partials files */
     static #filesCache: Map<string, string> = new Map();

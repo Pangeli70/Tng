@@ -6,9 +6,6 @@
  */
 
 import {
-    Uts
-} from "../deps.ts";
-import {
     BrdTng_IComponent
 } from "../interfaces/BrdTng_IComponent.ts";
 
