@@ -8,12 +8,12 @@
 
 // Brd local monorepo
 
-// Local >>>
+/* Local >>
 export * from "../../Uts/mod.ts";
-// Local <<<
+Local << */
 
 // Brd Github private repos
 
-/* Github >>
-export * from "https://raw.githubusercontent.com/Bredasys/Uts/master/mod.ts";
-Github << */
+// Github >>>
+export * from "https://raw.githubusercontent.com/Pangeli70/apg-brd-uts/master/mod.ts";
+// Github <<<
