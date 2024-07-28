@@ -1,29 +1,29 @@
 /** ---------------------------------------------------------------------------
- * @module [BrdTng]
+ * @module [ApgTng]
  * @author [APG] Angeli Paolo Giusto
- * @version 0.1 APG 20230712 Components
+ * @version 0.1 APG 20230712
  * ----------------------------------------------------------------------------
  */
 
 import {
-    BrdTng_IComponent
-} from "../interfaces/BrdTng_IComponent.ts";
+    ApgTng_IComponent
+} from "../interfaces/ApgTng_IComponent.ts";
 import {
-    BrdTng_ISelectOption
-} from "../interfaces/BrdTng_ISelectOption.ts";
+    ApgTng_ISelectOption
+} from "../interfaces/ApgTng_ISelectOption.ts";
 
 
 
-export class BrdTng_Select_Component implements BrdTng_IComponent {
+export class ApgTng_Select_Component implements ApgTng_IComponent {
 
     private _id: string;
-    private _options: BrdTng_ISelectOption[];
+    private _options: ApgTng_ISelectOption[];
     private _label: string;
     private _isRequired: boolean;
 
     constructor(
         aid: string,
-        aoptions: BrdTng_ISelectOption[],
+        aoptions: ApgTng_ISelectOption[],
         alabel: string,
         aisRequired: boolean,
     ) {

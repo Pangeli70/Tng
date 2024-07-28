@@ -1,17 +1,17 @@
 /** ---------------------------------------------------------------------------
- * @module [BrdTng]
+ * @module [ApgTng]
  * @author [APG] Angeli Paolo Giusto
- * @version 0.1 APG 20240504 Page menu
+ * @version 0.1 APG 20240504
  * ----------------------------------------------------------------------------
  */
 
 import {
-    BrdTng_IComponent
-} from "../interfaces/BrdTng_IComponent.ts";
+    ApgTng_IComponent
+} from "../interfaces/ApgTng_IComponent.ts";
 
 
 
-export class BrdTng_FormButtons_Component implements BrdTng_IComponent {
+export class ApgTng_FormButtons_Component implements ApgTng_IComponent {
 
 
     private _submit: string;

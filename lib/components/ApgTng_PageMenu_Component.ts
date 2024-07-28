@@ -1,7 +1,7 @@
 /** ---------------------------------------------------------------------------
- * @module [BrdTng]
+ * @module [ApgTng]
  * @author [APG] Angeli Paolo Giusto
- * @version 0.1 APG 20240504 Page menu
+ * @version 0.1 APG 20240504
  * ----------------------------------------------------------------------------
  */
 
@@ -9,24 +9,24 @@ import {
     Uts
 } from "../deps.ts";
 import {
-    BrdTng_IComponent
-} from "../interfaces/BrdTng_IComponent.ts";
+    ApgTng_IComponent
+} from "../interfaces/ApgTng_IComponent.ts";
 import {
-    BrdTng_IHyperlink
-} from "../interfaces/BrdTng_IHyperlink.ts";
+    ApgTng_IHyperlink
+} from "../interfaces/ApgTng_IHyperlink.ts";
 
 
 
-export class BrdTng_PageMenu_Component implements BrdTng_IComponent {
+export class ApgTng_PageMenu_Component implements ApgTng_IComponent {
 
 
-    private _items: BrdTng_IHyperlink[];
+    private _items: ApgTng_IHyperlink[];
 
-    constructor(aoptions: BrdTng_IHyperlink[]) {
+    constructor(aoptions: ApgTng_IHyperlink[]) {
         this._items = aoptions;
     }
 
-    render(alang: Uts.BrdUts_TLanguage) {
+    render(alang: Uts.ApgUts_TLanguage) {
 
         const r: string[] = [];
 
@@ -34,12 +34,12 @@ export class BrdTng_PageMenu_Component implements BrdTng_IComponent {
 
         for (const item of this._items) {
 
-            const label = Uts.BrdUts_Translate(item.label, alang);
+            const label = Uts.ApgUts_Translator.Translate(item.label, alang);
 
             const icon = (item.icon !== undefined) ? `<img src="${item.icon}" alt="${label}" /> ` : "";
 
             const title = item.title ?
-                Uts.BrdUts_Translate(item.title, alang) :
+                Uts.ApgUts_Translator.Translate(item.title, alang) :
                 label;
 
             r.push(`  <a href="${item.url}" role="button" title="${title}" >`);

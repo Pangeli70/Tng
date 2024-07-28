@@ -1,10 +1,10 @@
 /** ---------------------------------------------------------------------------
- * @module [BrdTng]
+ * @module [ApgTng]
  * @author [APG] Angeli Paolo Giusto
  * @version 0.1 APG 20220909 Alpha version
  * @version 0.2 APG 20230416 Moved to its own microservice
  * @version 0.3 APG 20230712 Improved Regex for JS recognition
- * @version 0.4 APG 20240630 BrdTng_IPageData
+ * @version 0.4 APG 20240630 ApgTng_IPageData
  * ----------------------------------------------------------------------------
  */
 
@@ -12,16 +12,16 @@ import {
     Uts
 } from "../deps.ts";
 import {
-    BrdTng_IPageData
-} from "../interfaces/BrdTng_IPageData.ts";
+    ApgTng_IPageData
+} from "../interfaces/ApgTng_IPageData.ts";
 
-type BrdTng_TemplateFunction = (a: any) => string;
+type ApgTng_TemplateFunction = (a: any) => string;
 
 
 /**
  * Modified by APG, starting from the original Drash Template Engine named Jae
  */
-export class BrdTng_Service {
+export class ApgTng_Service {
 
     static readonly REMOTE_PREFIX = "http";
 
@@ -32,12 +32,12 @@ export class BrdTng_Service {
     static #chunksCache: Map<number, string> = new Map();
 
     /** Processed javascript functions */
-    static #functionsCache: Map<string, BrdTng_TemplateFunction> = new Map();
+    static #functionsCache: Map<string, ApgTng_TemplateFunction> = new Map();
 
     /** Path to the templates folder  */
     static #templatesPath = "./srv/templates";
 
-    /** Dimension of the chached chunks */
+    /** Dimension of the cached chunks */
     static #cacheChunksLongerThan = 100
 
     /** Chaching mechanisms are enabled*/
@@ -55,10 +55,11 @@ export class BrdTng_Service {
     }
 
 
+
     static #getChunk(achunkHash: number) {
         const maybeChunk = this.#chunksCache.get(achunkHash);
         if (!maybeChunk) {
-            return `<p>Chunk with hash ${achunkHash} is not present in the BrdTngService chunks' Cache</p>`
+            return `<p>Chunk with hash ${achunkHash} is not present in the ApgTngService chunks' Cache</p>`
         }
         else {
             return maybeChunk!;
@@ -68,11 +69,11 @@ export class BrdTng_Service {
 
 
     static async Render(
-        atemplateData: BrdTng_IPageData,
-        arenderingEvents: Uts.BrdUts_ILogEvent[]
+        atemplateData: ApgTng_IPageData,
+        arenderingEvents: Uts.ApgUts_ILogEvent[]
     ) {
 
-        let templateFunction: BrdTng_TemplateFunction;
+        let templateFunction: ApgTng_TemplateFunction;
         let weHaveNewFunctionToStoreInCache = false;
 
         const isLocalTemplate = !atemplateData.page.template.startsWith(this.REMOTE_PREFIX);
@@ -89,25 +90,28 @@ export class BrdTng_Service {
             templateFunction = this.#functionsCache.get(templateFile)!;
 
             const message = "Retrieved from cache the function for " + templateFile;
-            const event = Uts.BrdUts_LogService.LogInfo(import.meta.url, this.Render, message);
+            const event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
             arenderingEvents.push(event);
 
         }
         else {
-            const js = await this.#getTemplateAsJavascript(templateFile, noCache);
+
+            const master = atemplateData.page.master ?? "";
+
+            const js = await this.#getTemplateAsJavascript(templateFile, noCache, master);
             try {
 
-                templateFunction = new Function("templateData", js) as BrdTng_TemplateFunction;
+                templateFunction = new Function("templateData", js) as ApgTng_TemplateFunction;
                 weHaveNewFunctionToStoreInCache = true;
 
                 const message = "Rebuilt the function for " + templateFile;
-                const event = Uts.BrdUts_LogService.LogInfo(import.meta.url, this.Render, message);
+                const event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
                 arenderingEvents.push(event);
 
             } catch (err) {
 
                 const message = "Error in JS conversion:" + err.message;
-                const event = Uts.BrdUts_LogService.LogError(import.meta.url, this.Render, message);
+                const event = Uts.ApgUts_LogService.LogError(import.meta.url, this.Render, message);
                 arenderingEvents.push(event);
 
                 return this.#handleJSError(err, templateFile, js);
@@ -117,24 +121,25 @@ export class BrdTng_Service {
         let result = "";
         try {
             result = templateFunction!.apply(this, [atemplateData]);
-            // now we are sure that works so we can store!
-            if (this.#useCache && weHaveNewFunctionToStoreInCache) {
+            // now we are sure that works so we can store! And we store even if use cache flag is false
+            // if (this.#useCache && weHaveNewFunctionToStoreInCache) {
+            if (weHaveNewFunctionToStoreInCache) {
 
                 this.#functionsCache.set(templateFile, templateFunction!);
 
                 let message = "Stored in cache the function for " + templateFile;
-                let event = Uts.BrdUts_LogService.LogInfo(import.meta.url, this.Render, message);
+                let event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
                 arenderingEvents.push(event);
 
                 message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
-                event = Uts.BrdUts_LogService.LogInfo(import.meta.url, this.Render, message);
+                event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
                 arenderingEvents.push(event);
 
             }
         } catch (err) {
 
             const message = "Error in JS evaluation:" + err.message;
-            const event = Uts.BrdUts_LogService.LogError(import.meta.url, this.Render, message);
+            const event = Uts.ApgUts_LogService.LogError(import.meta.url, this.Render, message);
             arenderingEvents.push(event);
 
             result = this.#handleJSError(err, templateFile, templateFunction!.toString());
@@ -146,9 +151,10 @@ export class BrdTng_Service {
 
     static async #getTemplateAsJavascript(
         atemplateFile: string,
-        anoCache: boolean
+        anoCache: boolean,
+        amaster: string = ""
     ) {
-        const templateHtml = await this.#getTemplate(atemplateFile, anoCache);
+        const templateHtml = await this.#getTemplate(atemplateFile, anoCache, amaster);
 
         const rawJs: string[] = [];
         rawJs.push("with(templateData) {");
@@ -185,7 +191,8 @@ export class BrdTng_Service {
 
     static async #getTemplate(
         atemplateFile: string,
-        anoCache: boolean
+        anoCache: boolean,
+        amaster = ""
     ) {
 
         let templateHtml: string = "";
@@ -196,27 +203,44 @@ export class BrdTng_Service {
             templateHtml = await this.#getTemplateFileFromDisk(atemplateFile, anoCache);
         }
 
+        let masterTemplate = "";
+
         // Check if the template extends another template typically a master page
         const extended = templateHtml.match(/<% extends.* %>/g);
+
         if (extended) {
             // Look for all the ancestors
             for (let i = 0; i < extended.length; i++) {
+
                 const match = extended[i];
                 templateHtml = templateHtml.replace(match, "");
-                const masterTemplate = match.replace('<% extends("', "").replace('") %>', "");
+                masterTemplate = match.replace('<% extends("', "").replace('") %>', "");
 
-                let masterHtml = ""
-                if (masterTemplate.startsWith(this.REMOTE_PREFIX)) {
-                    masterHtml = await this.#getTemplateFileFromUrl(masterTemplate, anoCache)
-                }
-                else {
-                    const masterViewName = this.#templatesPath + masterTemplate
-                    masterHtml = await this.#getTemplateFileFromDisk(masterViewName, anoCache);
-                }
-                // insert the current template in the ancestor's
-                templateHtml = masterHtml.replace("<% yield %>", templateHtml);
             }
         }
+
+        if (amaster !== "") {
+            masterTemplate = amaster;
+        }
+        else {
+            if (masterTemplate == "") {
+                throw new Error("Template " + atemplateFile + " does not extend a master template");
+            }
+
+        }
+
+
+        let masterHtml = ""
+        if (masterTemplate.startsWith(this.REMOTE_PREFIX)) {
+            masterHtml = await this.#getTemplateFileFromUrl(masterTemplate, anoCache)
+        }
+        else {
+            const masterViewName = this.#templatesPath + masterTemplate
+            masterHtml = await this.#getTemplateFileFromDisk(masterViewName, anoCache);
+        }
+        // insert the current template in the ancestor's
+        templateHtml = masterHtml.replace("<% yield %>", templateHtml);
+
 
         // Check recursively for partials means this template has child templates or component views
         let partials;
@@ -299,6 +323,7 @@ export class BrdTng_Service {
     }
 
 
+
     static #convertTemplateInJs(
         atemplateHtml: string,
         arawJSCode: string[]
@@ -377,7 +402,7 @@ export class BrdTng_Service {
                 <title>ERROR</title>
             </head>
             <body style="margin-left:20%; margin-right:20%; font-family: 'Segoe UI', 'Verdana';">
-                <h1>BrdTngService Error!</h1>
+                <h1>ApgTngService Error!</h1>
                 <h2>In the view: ${atemplateFile}</h2>
                 <h3 style="color:red;">${aerror}</h3>
                 <p>Cut and paste following code as potentially invalid javascript.</p>
@@ -434,6 +459,60 @@ export class BrdTng_Service {
         const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
         return hash;
 
+    }
+
+
+
+    static GetCaches() {
+
+
+        const r = {
+
+            chunks: Array.from(this.#chunksCache.keys()),
+
+            functions: Array.from(this.#functionsCache.keys()),
+
+            files: Array.from(this.#filesCache.keys()),
+
+        }
+
+        return r;
+    }
+
+
+
+    static GetFileFromCache(afileId: string) {
+
+        const r = {
+            id: afileId,
+            content: this.#filesCache.get(afileId) ?? ""
+        }
+
+        return r
+    }
+
+
+
+    static GetFunctionFromCache(afunctionId: string) {
+
+        const r = {
+            id: afunctionId,
+            content: this.#functionsCache.get(afunctionId) ?? ""
+        }
+
+        return r
+    }
+
+
+    
+    static GetChunkFromCache(achunkId: number) {
+
+        const r = {
+            id: achunkId,
+            content: this.#chunksCache.get(achunkId) ?? ""
+        }
+
+        return r
     }
 
 }
