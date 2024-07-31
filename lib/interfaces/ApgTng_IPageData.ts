@@ -4,8 +4,11 @@
  * @version 0.1 APG 20240630
  * @version 0.2 APG 20240716 Logo JS
  * @version 0.3 APG 20240727 Master file
+ * @version 0.4 APG 20240731 Languange and translations
  * ----------------------------------------------------------------------------
  */
+
+import { Uts } from "../deps.ts";
 
 
 /**
@@ -44,6 +47,9 @@ export interface ApgTng_IPageData {
         /** Title of the page */
         title: string;
 
+        /** Language */
+        lang: Uts.ApgUts_TLanguage; // @0.4
+
         /** Date Time when the page was created */
         rendered: string;
 
@@ -52,6 +58,9 @@ export interface ApgTng_IPageData {
 
         /** Raw data for the template interpolation*/
         data?: Record<string, any>
+
+        /** Translations by id */
+        translations?: Record<string, Uts.ApgUts_IMultilanguage> // @0.4
     },
 
     user: {
