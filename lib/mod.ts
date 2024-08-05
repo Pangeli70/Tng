@@ -19,6 +19,7 @@ export { ApgTng_Select_Component } from "./components/ApgTng_Select_Component.ts
 export { ApgTng_TextValue_Component } from "./components/ApgTng_TextValue_Component.ts";
 export { ApgTng_Title_Component } from "./components/ApgTng_Title_Component.ts";
 
+export type { ApgTng_IChunk } from "./interfaces/ApgTng_IChunk.ts";
 export type { ApgTng_IComponent } from "./interfaces/ApgTng_IComponent.ts";
 export type { ApgTng_IHyperlink } from "./interfaces/ApgTng_IHyperlink.ts";
 export type { ApgTng_IPageData } from "./interfaces/ApgTng_IPageData.ts";

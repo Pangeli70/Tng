@@ -1,7 +1,8 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
  * @author [APG] Angeli Paolo Giusto
- * @version 0.1 APG 20240504 Page menu
+ * @version 0.1 APG 20240504
+ * @version 0.1 APG 20240804 Reserved flag
  * ----------------------------------------------------------------------------
  */
 
@@ -20,4 +21,6 @@ export interface ApgTng_IHyperlink {
     title?: Uts.ApgUts_IMultilanguage;
 
     icon?: string;
+
+    reserved: boolean; // @0.2
 }

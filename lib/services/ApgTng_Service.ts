@@ -5,12 +5,16 @@
  * @version 0.2 APG 20230416 Moved to its own microservice
  * @version 0.3 APG 20230712 Improved Regex for JS recognition
  * @version 0.4 APG 20240630 ApgTng_IPageData
+ * @version 0.5 APG 20240804 Chunk cache management
  * ----------------------------------------------------------------------------
  */
 
 import {
     Uts
 } from "../deps.ts";
+import {
+    ApgTng_IChunk
+} from "../interfaces/ApgTng_IChunk.ts";
 import {
     ApgTng_IPageData
 } from "../interfaces/ApgTng_IPageData.ts";
@@ -21,7 +25,12 @@ type ApgTng_TemplateFunction = (a: any) => string;
 /**
  * Modified by APG, starting from the original Drash Template Engine named Jae
  */
-export class ApgTng_Service {
+export class ApgTng_Service extends Uts.ApgUts_BaseService {
+
+
+    static override initModuleName() {
+        return this.moduleFromUrl(import.meta.url)
+    }
 
     static readonly REMOTE_PREFIX = "http";
 
@@ -29,7 +38,7 @@ export class ApgTng_Service {
     static #filesCache: Map<string, string> = new Map();
 
     /** Html chunks hash Cache */
-    static #chunksCache: Map<number, string> = new Map();
+    static #chunksCache: Map<number, ApgTng_IChunk> = new Map();
 
     /** Processed javascript functions */
     static #functionsCache: Map<string, ApgTng_TemplateFunction> = new Map();
@@ -44,6 +53,7 @@ export class ApgTng_Service {
     static #useCache = false;
 
 
+
     static Init(
         atemplatesPath: string,
         auseCache = false,
@@ -55,14 +65,17 @@ export class ApgTng_Service {
     }
 
 
-
+    /**
+     * This method is not referenced directly!
+     * It is used by the interpolator to create the template function
+     */
     static #getChunk(achunkHash: number) {
         const maybeChunk = this.#chunksCache.get(achunkHash);
         if (!maybeChunk) {
             return `<p>Chunk with hash ${achunkHash} is not present in the ApgTngService chunks' Cache</p>`
         }
         else {
-            return maybeChunk!;
+            return maybeChunk.content;
         }
     }
 
@@ -72,7 +85,7 @@ export class ApgTng_Service {
         atemplateData: ApgTng_IPageData,
         arenderingEvents: Uts.ApgUts_ILogEvent[]
     ) {
-
+        let result = "";
         let templateFunction: ApgTng_TemplateFunction;
         let weHaveNewFunctionToStoreInCache = false;
 
@@ -98,10 +111,22 @@ export class ApgTng_Service {
 
             const master = atemplateData.page.master ?? "";
 
-            const js = await this.#getTemplateAsJavascript(templateFile, noCache, master);
+            const r = await this.#getTemplateAsJavascript(templateFile, noCache, master);
+
+            if (!r.ok) { 
+
+                const event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, r.getMessages());
+                arenderingEvents.push(event);
+
+                result = r.payload as string;
+                return result
+            }
+
+            const maybeJs = r.payload as string;
+
             try {
 
-                templateFunction = new Function("templateData", js) as ApgTng_TemplateFunction;
+                templateFunction = new Function("templateData", maybeJs) as ApgTng_TemplateFunction;
                 weHaveNewFunctionToStoreInCache = true;
 
                 const message = "Rebuilt the function for " + templateFile;
@@ -110,16 +135,23 @@ export class ApgTng_Service {
 
             } catch (err) {
 
-                const message = "Error in JS conversion:" + err.message;
+                const message = "Error in Js conversion:" + err.message;
                 const event = Uts.ApgUts_LogService.LogError(import.meta.url, this.Render, message);
                 arenderingEvents.push(event);
 
-                return this.#handleJSError(err, templateFile, js);
+                return this.#handleJsConversionError(err, templateFile, maybeJs);
             }
         }
 
-        let result = "";
+
         try {
+
+            if (this.#useCache) {
+                atemplateData.cache = {
+                    chunks: this.#chunksCache
+                }
+            }
+
             result = templateFunction!.apply(this, [atemplateData]);
             // now we are sure that works so we can store! And we store even if use cache flag is false
             // if (this.#useCache && weHaveNewFunctionToStoreInCache) {
@@ -142,7 +174,7 @@ export class ApgTng_Service {
             const event = Uts.ApgUts_LogService.LogError(import.meta.url, this.Render, message);
             arenderingEvents.push(event);
 
-            result = this.#handleJSError(err, templateFile, templateFunction!.toString());
+            result = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
         }
         return result;
     }
@@ -154,19 +186,29 @@ export class ApgTng_Service {
         anoCache: boolean,
         amaster: string = ""
     ) {
-        const templateHtml = await this.#getTemplate(atemplateFile, anoCache, amaster);
 
+        let r = await this.#getTemplate(atemplateFile, anoCache, amaster);
+        if(!r.ok) {
+            return r;
+        }
+        const templateHtml = r.payload as string;
         const rawJs: string[] = [];
         rawJs.push("with(templateData) {");
         rawJs.push("const r=[];");
 
-        this.#convertTemplateInJs(templateHtml, rawJs);
-
+        r = this.#convertTemplateInJs(atemplateFile, templateHtml, rawJs);
+        if (!r.ok) {
+            return r;
+        }
+        
         rawJs.push('return r.join("");');
         rawJs.push('}');
 
         const js = rawJs.join("\r\n");
-        return js;
+
+        r.setPayload(js, 'string')
+
+        return r;
     }
 
 
@@ -194,14 +236,20 @@ export class ApgTng_Service {
         anoCache: boolean,
         amaster = ""
     ) {
+        let r = new Uts.ApgUts_Result();
 
         let templateHtml: string = "";
         if (atemplateFile.startsWith(this.REMOTE_PREFIX)) {
-            templateHtml = await this.#getTemplateFileFromUrl(atemplateFile, anoCache);
+            r = await this.#getTemplateFileFromUrl(atemplateFile, anoCache);
         }
         else {
-            templateHtml = await this.#getTemplateFileFromDisk(atemplateFile, anoCache);
+            r = await this.#getTemplateFileFromDisk(atemplateFile, anoCache);
         }
+        if (!r.ok) {
+            return r;
+        }
+
+        templateHtml = r.payload as string;
 
         let masterTemplate = "";
 
@@ -224,20 +272,27 @@ export class ApgTng_Service {
         }
         else {
             if (masterTemplate == "") {
-                throw new Error("Template " + atemplateFile + " does not extend a master template");
+                const message = "Template " + atemplateFile + " does not extend a master template";
+                r.ok = false;
+                r.addMessage(this.#getTemplate.name, message);
+                return r;
             }
 
         }
 
-
         let masterHtml = ""
         if (masterTemplate.startsWith(this.REMOTE_PREFIX)) {
-            masterHtml = await this.#getTemplateFileFromUrl(masterTemplate, anoCache)
+            r = await this.#getTemplateFileFromUrl(masterTemplate, anoCache)
         }
         else {
             const masterViewName = this.#templatesPath + masterTemplate
-            masterHtml = await this.#getTemplateFileFromDisk(masterViewName, anoCache);
+            r = await this.#getTemplateFileFromDisk(masterViewName, anoCache);
         }
+        if (!r.ok) {
+            return r;
+        }
+
+        masterHtml = r.payload as string;
         // insert the current template in the ancestor's
         templateHtml = masterHtml.replace("<% yield %>", templateHtml);
 
@@ -251,13 +306,19 @@ export class ApgTng_Service {
                     .replace('<% partial("', "")
                     .replace('") %>', "");
                 const partialView = this.#templatesPath + partialName
-                const partialHtml = await this.#getTemplateFileFromDisk(partialView, anoCache);
+                r = await this.#getTemplateFileFromDisk(partialView, anoCache);
+
+                if(!r.ok) {
+                    return r;
+                }
+                const partialHtml = r.payload as string;
                 //insert the partial html inside the template
                 templateHtml = templateHtml.replace(match, partialHtml);
             }
         }
 
-        return templateHtml;
+        r.setPayload(templateHtml, 'string');
+        return r;
     }
 
 
@@ -267,121 +328,184 @@ export class ApgTng_Service {
         anoCache: boolean
     ) {
 
+        const r = new Uts.ApgUts_Result();
+        let templateContent = ""
+
         if (this.#useCache && anoCache == false && this.#filesCache.has(atemplateFile)) {
-            return this.#filesCache.get(atemplateFile)!;
+
+            templateContent = this.#filesCache.get(atemplateFile)!;
+
         }
         else {
 
-            let templateContent = ""
+            const ERROR_TYPE = "Template local fetching";
+
             try {
                 templateContent = await Deno.readTextFile(atemplateFile);
+                this.#filesCache.set(atemplateFile, templateContent);
             } catch (e) {
-                templateContent = this.#geErrorTemplate(atemplateFile, e.message);
+                r.ok = false;
+                r.addMessage(this.#getTemplateFileFromDisk.name, e.message)
+                templateContent = this.#geErrorTemplate(atemplateFile, ERROR_TYPE, e.message);
             }
-            // TODO Could be redundant in some cases if we overwite the cache. 
-            // Or we waste memory since cache wont be used
-            // -- APG 20220802
-            this.#filesCache.set(atemplateFile, templateContent);
-            return templateContent;
+
         }
 
+        r.setPayload(
+            templateContent,
+            'string'
+        );
+
+        return r;
     }
 
 
 
     static async #getTemplateFileFromUrl(
         aurl: string,
-        anoCache: boolean
+        anoCache: boolean,
+
     ) {
+
+        const r = new Uts.ApgUts_Result();
+        let templateContent = ""
 
         if (this.#useCache && anoCache == false && this.#filesCache.has(aurl)) {
 
-            return this.#filesCache.get(aurl)!;
+            templateContent = this.#filesCache.get(aurl)!
 
         }
         else {
 
-            let templateContent = ""
-
+            const ERROR_TYPE = "Template remote fetching";
             try {
                 const response = await fetch(aurl);
                 if (response.status !== 200) {
                     throw new Error(`HTTP error! fetching ${aurl} - status: ${response.status}`);
                 }
                 templateContent = await response.text();
+                this.#filesCache.set(aurl, templateContent);
             } catch (e) {
-                templateContent = this.#geErrorTemplate(aurl, e.message);
+                r.ok = false;
+                r.addMessage(this.#getTemplateFileFromUrl.name, e.message)
+                templateContent = this.#geErrorTemplate(aurl, ERROR_TYPE, e.message);
             }
 
-            // TODO Could be redundant in some cases if we overwite the cache. 
-            // Or we waste memory since cache wont be used
-            // -- APG 20220802
-            this.#filesCache.set(aurl, templateContent);
-            return templateContent;
         }
+
+        r.setPayload(
+            templateContent,
+            'string'
+        );
+
+        return r;
 
     }
 
 
 
     static #convertTemplateInJs(
+        asource: string,
         atemplateHtml: string,
         arawJSCode: string[]
     ) {
 
-        const firstSplit = atemplateHtml.split("<%");
+        const r = new Uts.ApgUts_Result();
+
+        const firstSplitChunks = atemplateHtml.split("<%");
         let first = true;
 
-        for (const split of firstSplit) {
+        for (const chunk of firstSplitChunks) {
 
             if (first) {
-                arawJSCode.push(this.#convertToJs(split, false)); // html
+                const html = this.#convertHtmlToJs(chunk, asource);
+                arawJSCode.push(html); // html
                 first = false;
             }
             else {
-                const secondSplit = split.split("%>");
-                arawJSCode.push(this.#convertToJs(secondSplit[0], true)); // js
-                arawJSCode.push(this.#convertToJs(secondSplit[1], false));
+                const secondSplit = chunk.split("%>");
+                if (secondSplit.length != 2) {
+                    r.ok = false;
+                    const message = `The chunk does not contain a properly formatted end markup ( %> ) symbol: ${chunk}`;
+                    r.addMessage(this.#convertTemplateInJs.name, message);
+                    return r;
+                }
+                const js = this.#convertJsToJs(secondSplit[0])
+                arawJSCode.push(js);
+                const html = this.#convertHtmlToJs(secondSplit[1], asource)
+                arawJSCode.push(html);
             }
         }
-
+        return r;
     }
 
 
 
-    static #convertToJs(
+    static #convertJsToJs(
         achunk: string,
-        isJs: boolean
     ) {
 
         let r = "";
+        const regExp =
+            // Original from jay
+            // /(^( )?(function|var|let|const|=|if|else|switch|case|break|for|do|while|push|{|}|;))(.*)?/g;
+            // Modified version by APG
+            // /      (function|    let|const|for|while|in|do|of|if|else|switch|case|break|\{|\}|;|=|\(|\))/g;
+            // got by chatGpt 2023/01/15 
+            // /(break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|function|if|import|in|instanceof|let|new|push|return|super|switch|this|throw|try|typeof|var|void|while|with|yield|\{|\}|;)/g
+            // Simplified by previous 
+            /(break|case|const|continue|do|else|for|function|if|instanceof|let|new|push|return|switch|this|typeof|var|while|\{|\}|;|=)/g
 
-        if (isJs) {
-            const regExp = /(function |let |const |for |while |in |do |of |if |else |switch |case |break|\{|\}|;|=|\(|\))/g;
-            const chunk = achunk.replaceAll("\r\n", " ").trim();
-            const matches = chunk.match(regExp);
-            if (matches != null) {
-                // we expect supported js code, so insert js chunk as is
-                r = chunk;
-            }
-            else {
-                // instead insert interpolated value
-                r = `r.push(${achunk});`
-            }
+        const chunk = achunk.replaceAll("\r\n", " ").trim();
+        const matches = chunk.match(regExp);
+        if (matches != null) {
+            // we expect supported js code, so insert js chunk as is
+            r = chunk;
         }
         else {
-            if (this.#useCache && achunk.length > this.#cacheChunksLongerThan) {
-                const chunkHash = this.#brycHash(achunk);
-                if (!this.#chunksCache.has(chunkHash)) {
-                    this.#chunksCache.set(chunkHash, achunk)
+            // instead insert interpolated value
+            r = `r.push(${achunk});`
+        }
+
+
+        return r;
+    }
+
+
+
+    static #convertHtmlToJs(
+        achunk: string,
+        asource: string
+    ) {
+        let r = "";
+
+        let chunkHash = 0;
+        // If longer than cache threshold, Create and store cacheable chunk anyways
+        if (achunk.length > this.#cacheChunksLongerThan) {
+            chunkHash = this.#brycHash(achunk);
+            if (!this.#chunksCache.has(chunkHash)) {
+
+                const chunk: ApgTng_IChunk = {
+                    hash: chunkHash,
+                    content: achunk,
+                    source: asource,
+                    usage: 1
                 }
-                // Insert html chunk as reference to the chunks Hash
-                r = `r.push( this.#getChunk(${chunkHash}))`;
+                this.#chunksCache.set(chunkHash, chunk);
             }
-            else {
-                // Insert html chunk as string
-                r = 'r.push(`' + achunk + '`);'
-            }
+        }
+
+        if (this.#useCache && this.#chunksCache.has(chunkHash)) {
+
+            const chunk = this.#chunksCache.get(chunkHash)!;
+            chunk.usage++;
+
+            // Insert html chunk as reference to the chunks Hash
+            r = `r.push( cache.chunks.get(${chunkHash})?.content )`;
+        }
+        else {
+            // Insert html chunk as string
+            r = 'r.push(`' + achunk + '`);'
         }
 
         return r;
@@ -391,18 +515,19 @@ export class ApgTng_Service {
 
     static #geErrorTemplate(
         atemplateFile: string,
+        aerrorType: string,
         aerror: string,
         aprintableJs = ""
     ) {
         const r = `
         <!doctype html>
-        <html lang=it-IT>
+        <html>
             <head>
                 <meta charset=utf-8>
                 <title>ERROR</title>
             </head>
             <body style="margin-left:20%; margin-right:20%; font-family: 'Segoe UI', 'Verdana';">
-                <h1>ApgTngService Error!</h1>
+                <h1>${this.NAME} ${aerrorType} error!</h1>
                 <h2>In the view: ${atemplateFile}</h2>
                 <h3 style="color:red;">${aerror}</h3>
                 <p>Cut and paste following code as potentially invalid javascript.</p>
@@ -415,30 +540,50 @@ export class ApgTng_Service {
     }
 
 
-
-    static #handleJSError(
-        aerr: Error,
-        aviewName: string,
-        ajs: string
-    ) {
-
-
-        const notDefIndex = (<string>aerr.message).indexOf(" is not defined");
-
-        let printableJS = ajs
+    static #printableJs(aJsString: string) {
+        return aJsString
             .replaceAll(">", "&gt")
             .replaceAll("<", "&lt")
-            .replaceAll("%", "&amp");
+            .replaceAll("%", "&amp")
+            .replaceAll(" ", "&nbsp;")
+            .replaceAll("\n", "\n&nbsp;&nbsp;");
+    }
 
+
+    static #handleJsConversionError(
+        aerror: Error,
+        atemplateName: string,
+        ainvalidJs: string
+    ) {
+        const ERROR_TYPE = "Template conversion";
+        let printableJS = this.#printableJs(ainvalidJs);
+        printableJS = `function rawJavascript (templateData){\n${printableJS}\n}`;
+
+        const r = this.#geErrorTemplate(atemplateName, ERROR_TYPE, aerror.message, printableJS);
+
+        return r;
+    }
+
+
+
+
+    static #handleJsInterpolationError(
+        aerror: Error,
+        atemplateName: string,
+        ainvalidInterpolation: string
+    ) {
+        const ERROR_TYPE = "Template interpolation";
+        let printableJS = this.#printableJs(ainvalidInterpolation);
+        printableJS = `function compiledJavascript (templateData){\n${printableJS}\n}`;
+
+        const notDefIndex = (<string>aerror.message).indexOf(" is not defined");
         if (notDefIndex != -1) {
-            const missingItem = (<string>aerr.message).substring(0, notDefIndex);
+            const missingItem = (<string>aerror.message).substring(0, notDefIndex);
             const missingmarkup = `<span style="color:red"><b>${missingItem}</b></span>`;
             printableJS = printableJS.replaceAll(missingItem, missingmarkup);
         }
 
-        printableJS = `function anonymous (templateData){\n${printableJS}\n}`;
-
-        const r = this.#geErrorTemplate(aviewName, aerr.message, printableJS);
+        const r = this.#geErrorTemplate(atemplateName, ERROR_TYPE, aerror.message, printableJS);
 
         return r;
     }
@@ -466,13 +611,60 @@ export class ApgTng_Service {
     static GetCaches() {
 
 
+        const chunks: {
+            key: string, label: string
+        }[] = [];
+        for (const [key, value] of this.#chunksCache) {
+            chunks.push({
+                key: key.toString(),
+                label: value.source + " - " + key + " - " + value.content.length + " - " + value.usage
+            });
+        }
+        chunks.sort((a: {
+            key: string, label: string
+        }, b: {
+            key: string, label: string
+        }) => b.label.localeCompare(a.label));
+
+
+        const functions: {
+            key: string, label: string
+        }[] = [];
+        for (const [key, value] of this.#functionsCache) {
+            functions.push({
+                key: key.toString(),
+                label: key + " - " + value.toString().length
+            });
+        }
+        functions.sort((a: {
+            key: string, label: string
+        }, b: {
+            key: string, label: string
+        }) => b.label.localeCompare(a.label));
+
+
+        const files: {
+            key: string, label: string
+        }[] = [];
+        for (const [key, value] of this.#filesCache) {
+            files.push({
+                key: key.toString(),
+                label: key + " - " + value.toString().length
+            });
+        }
+        files.sort((a: {
+            key: string, label: string
+        }, b: {
+            key: string, label: string
+        }) => b.label.localeCompare(a.label));
+
         const r = {
 
-            chunks: Array.from(this.#chunksCache.keys()),
+            chunks,
 
-            functions: Array.from(this.#functionsCache.keys()),
+            functions,
 
-            files: Array.from(this.#filesCache.keys()),
+            files
 
         }
 
@@ -485,7 +677,7 @@ export class ApgTng_Service {
 
         const r = {
             id: afileId,
-            content: this.#filesCache.get(afileId) ?? ""
+            content: this.#filesCache.get(afileId) ?? "",
         }
 
         return r
@@ -504,12 +696,12 @@ export class ApgTng_Service {
     }
 
 
-    
+
     static GetChunkFromCache(achunkId: number) {
 
         const r = {
             id: achunkId,
-            content: this.#chunksCache.get(achunkId) ?? ""
+            content: this.#chunksCache.get(achunkId)?.content ?? ""
         }
 
         return r
