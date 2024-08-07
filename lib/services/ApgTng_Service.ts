@@ -34,23 +34,36 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
     static readonly REMOTE_PREFIX = "http";
 
-    /** Master and partials files */
+    /**
+     * Master and partials files cache. It is useful only for debugging
+     */
     static #filesCache: Map<string, string> = new Map();
 
-    /** Html chunks hash Cache */
+    /**
+     * Html chunks Cache by hash. The cache is always filled and
+     * maintained, but it is effectively used only if the UseCache flag is enabled
+     */
     static #chunksCache: Map<number, ApgTng_IChunk> = new Map();
 
-    /** Processed javascript functions */
+    /**
+     * Processed javascript templatefunctions 
+     */
     static #functionsCache: Map<string, ApgTng_TemplateFunction> = new Map();
 
-    /** Path to the templates folder  */
+    /**
+     * Path to the templates folder
+     */
     static #templatesPath = "./srv/templates";
 
-    /** Dimension of the cached chunks */
+    /**
+     * Minimum size of the chunk in chararacters to get in the cache.
+     */
     static #cacheChunksLongerThan = 100
 
-    /** Chaching mechanisms are enabled*/
-    static #useCache = false;
+    /**
+     * Caching mechanisms are enabled
+     */
+    static UseCache = false;
 
 
 
@@ -61,7 +74,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
     ) {
         this.#templatesPath = atemplatesPath;
         this.#cacheChunksLongerThan = acacheChunksLongerThan;
-        this.#useCache = auseCache;
+        this.UseCache = auseCache;
     }
 
 
@@ -98,7 +111,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
             atemplateData.page.template;
 
 
-        if (this.#useCache && noCache == false && this.#functionsCache.has(templateFile)) {
+        if (this.UseCache && noCache == false && this.#functionsCache.has(templateFile)) {
 
             templateFunction = this.#functionsCache.get(templateFile)!;
 
@@ -146,7 +159,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         try {
 
-            if (this.#useCache) {
+            if (this.UseCache) {
                 atemplateData.cache = {
                     chunks: this.#chunksCache
                 }
@@ -331,7 +344,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         const r = new Uts.ApgUts_Result();
         let templateContent = ""
 
-        if (this.#useCache && anoCache == false && this.#filesCache.has(atemplateFile)) {
+        if (this.UseCache && anoCache == false && this.#filesCache.has(atemplateFile)) {
 
             templateContent = this.#filesCache.get(atemplateFile)!;
 
@@ -370,7 +383,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         const r = new Uts.ApgUts_Result();
         let templateContent = ""
 
-        if (this.#useCache && anoCache == false && this.#filesCache.has(aurl)) {
+        if (this.UseCache && anoCache == false && this.#filesCache.has(aurl)) {
 
             templateContent = this.#filesCache.get(aurl)!
 
@@ -495,7 +508,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
             }
         }
 
-        if (this.#useCache && this.#chunksCache.has(chunkHash)) {
+        if (this.UseCache && this.#chunksCache.has(chunkHash)) {
 
             const chunk = this.#chunksCache.get(chunkHash)!;
             chunk.usage++;
