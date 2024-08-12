@@ -51,17 +51,17 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
     static #functionsCache: Map<string, ApgTng_TemplateFunction> = new Map();
 
     /**
-     * Path to the templates folder
+     * Path to the templates folder, can be local or remote
      */
-    static #templatesPath = "./srv/templates";
+    static TemplatesPath = "./srv/templates";
 
     /**
-     * Minimum size of the chunk in chararacters to get in the cache.
+     * Minimum size of the chunk in chararacters to get in the cache. Default is 100
      */
-    static #cacheChunksLongerThan = 100
+    static ChunkSize = 100
 
     /**
-     * Caching mechanisms are enabled
+     * Caching mechanisms flag. Default is false.
      */
     static UseCache = false;
 
@@ -72,8 +72,8 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         auseCache = false,
         acacheChunksLongerThan = 100
     ) {
-        this.#templatesPath = atemplatesPath;
-        this.#cacheChunksLongerThan = acacheChunksLongerThan;
+        this.TemplatesPath = atemplatesPath;
+        this.ChunkSize = acacheChunksLongerThan;
         this.UseCache = auseCache;
     }
 
@@ -107,7 +107,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         const noCache = atemplateData.page.noCache == undefined ? false : atemplateData.page.noCache;
 
         const templateFile = (isLocalTemplate) ?
-            this.#normalizeTemplateFile(this.#templatesPath, atemplateData.page.template) :
+            this.#normalizeTemplateFile(this.TemplatesPath, atemplateData.page.template) :
             atemplateData.page.template;
 
 
@@ -230,10 +230,10 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         atemplatesPath: string,
         atemplateFile: string
     ) {
-        if (this.#templatesPath.endsWith("/") && atemplateFile.startsWith("/")) {
+        if (this.TemplatesPath.endsWith("/") && atemplateFile.startsWith("/")) {
             atemplatesPath += atemplateFile.slice(1);
         }
-        else if (!this.#templatesPath.endsWith("/") && !atemplateFile.startsWith("/")) {
+        else if (!this.TemplatesPath.endsWith("/") && !atemplateFile.startsWith("/")) {
             atemplatesPath += `/${atemplateFile}`;
         }
         else {
@@ -298,7 +298,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
             r = await this.#getTemplateFileFromUrl(masterTemplate, anoCache)
         }
         else {
-            const masterViewName = this.#templatesPath + masterTemplate
+            const masterViewName = this.TemplatesPath + masterTemplate
             r = await this.#getTemplateFileFromDisk(masterViewName, anoCache);
         }
         if (!r.ok) {
@@ -318,7 +318,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                 const partialName = match
                     .replace('<% partial("', "")
                     .replace('") %>', "");
-                const partialView = this.#templatesPath + partialName
+                const partialView = this.TemplatesPath + partialName
                 r = await this.#getTemplateFileFromDisk(partialView, anoCache);
 
                 if(!r.ok) {
@@ -494,7 +494,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         let chunkHash = 0;
         // If longer than cache threshold, Create and store cacheable chunk anyways
-        if (achunk.length > this.#cacheChunksLongerThan) {
+        if (achunk.length > this.ChunkSize) {
             chunkHash = this.#brycHash(achunk);
             if (!this.#chunksCache.has(chunkHash)) {
 
