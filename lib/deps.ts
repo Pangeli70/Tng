@@ -5,4 +5,6 @@
  * ----------------------------------------------------------------------------
  */
 
-export * from "../../Uts/lib/classes/monorepo.ts";
+/** Internal dependencies */
+
+export * from "./monorepo.ts";
