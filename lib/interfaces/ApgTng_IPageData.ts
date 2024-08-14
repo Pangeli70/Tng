@@ -6,6 +6,7 @@
  * @version 0.3 APG 20240727 Master file
  * @version 0.4 APG 20240731 Language and translations
  * @version 0.5 APG 20240804 Chunks cache + custom CSS
+ * @version 1.0 APG 20240813 Custom Head, custom styles and use cache
  * ----------------------------------------------------------------------------
  */
 
@@ -24,41 +25,62 @@ import {
 export interface ApgTng_IPageData {
 
     microservice: {
+
+        /**
+         * Name of the microservice [master]
+         */
         name: string;
+
+        /**
+         * Title of the microservice [master]
+         */
         title: string;
     }
 
     page: {
 
         /**
-         * Host for assets can be "" for "http://localhost" or a CDN
+         * Host for assets. Can be "" for "http://localhost" or a CDN [master]
          */
-        assetsHost?: string; // @0.3
-
-        /** Master file */
-        // TODO Move this as non optional parameter -- APG 20240727
-        master?: string;
-
-        /** Template file */
-        template: string;
-
-        /** Custom css for templates */
-        customCss?: string // @0.4
-
-        /** Favicon for templates */
-        favicon?: string // @0.3
-
-        /** Logo js for templates */
-        logoJs: string // @0.2
-
-        /** 
-         * Do not use the cache for this template. 
-         * It is useful when you are in development
-         */
-        noCache?: boolean;
+        assetsHost: string; // @0.3
 
         /**
-         * Title of the page
+         * Master file to be used to build the page
+         */
+        master: string;
+
+        /**
+         * Template file of the page
+         */
+        template: string;
+
+        /**
+         * Primary custom css referred to assets host [master]
+         */
+        customCss?: string // @0.4
+
+        /**
+         * Custom head. Insert other js or css files references here [master]
+         */
+        customHead?: string; // @1.0
+
+        /**
+         * Custom styles for current template [master]
+         */
+        customStyles?: string // @1.0
+
+        /**
+         * Favicon for templates referred to assets host [master]
+         */
+        favicon: string // @0.3
+
+        /**
+         * Logo js for templates referred to assets host [master]
+         */
+        logoJs: string // @0.2
+
+        /**
+         * Title of the page should be already translated [master]
          */
         title: string;
 
@@ -72,7 +94,10 @@ export interface ApgTng_IPageData {
          */
         rendered: string;
 
-        /** Map of pre rendered components by Id */
+        /**
+         * Map by Id of pre rendered components to be used when interpolation
+         * in the template is way too complex.
+         */
         components?: Record<string, string>
 
         /**
@@ -81,7 +106,11 @@ export interface ApgTng_IPageData {
         data?: Record<string, any>
 
         /**
-         * Translations by id
+         * Translations by id for multilanguage support
+         * 
+         * This can be used like the following
+         * <% page.translations[<id>][page.lang] %> or
+         * <% page.translations.<id>[page.lang] %>
          */
         translations?: Record<string, Uts.ApgUts_IMultilanguage> // @0.4
     },
@@ -89,21 +118,28 @@ export interface ApgTng_IPageData {
     user: {
 
         /**
-         * User email
+         * User email [master]
          */
         email?: string
 
         /**
-         * User role
+         * User role [master]
          */
         role: string
-        
+
     }
 
-    cache?: { //@0.5
+    cache: { // @0.5
+
+        /** 
+         * Do not use the cache for this template. 
+         * It is useful when you are in development
+         */
+        useIt: boolean; // @1.0
 
         /**
-         * Map of pre memoized chunks
+         * Map by Bryc hash of pre memoized chunks. This is injected by the cache system
+         * to allow interpolation 
          */
         chunks?: Map<number, ApgTng_IChunk>;
     }

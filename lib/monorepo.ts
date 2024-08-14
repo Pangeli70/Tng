@@ -13,7 +13,7 @@
 export * from "../../Uts/mod.ts";
 Local << */
 
-// Apg Github private repos
+// Apg Github repos
 
 // Github >>>
 export * from "https://raw.githubusercontent.com/Pangeli70/Uts/master/mod.ts";

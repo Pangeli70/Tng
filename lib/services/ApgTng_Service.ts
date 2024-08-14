@@ -104,7 +104,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         const isLocalTemplate = !atemplateData.page.template.startsWith(this.REMOTE_PREFIX);
 
-        const noCache = atemplateData.page.noCache == undefined ? false : atemplateData.page.noCache;
+        const noCache = atemplateData.cache.useIt == undefined ? false : atemplateData.cache.useIt;
 
         const templateFile = (isLocalTemplate) ?
             this.#normalizeTemplateFile(this.TemplatesPath, atemplateData.page.template) :
@@ -161,6 +161,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
             if (this.UseCache) {
                 atemplateData.cache = {
+                    useIt: true,
                     chunks: this.#chunksCache
                 }
             }
@@ -690,7 +691,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         const r = {
             id: afileId,
-            content: this.#filesCache.get(afileId) ?? "",
+            content: this.#filesCache.get(afileId) ?? "File not found",
         }
 
         return r
@@ -702,7 +703,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         const r = {
             id: afunctionId,
-            content: this.#functionsCache.get(afunctionId) ?? ""
+            content: this.#functionsCache.get(afunctionId) ?? "Function not found"
         }
 
         return r
@@ -714,10 +715,20 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         const r = {
             id: achunkId,
-            content: this.#chunksCache.get(achunkId)?.content ?? ""
+            content: this.#chunksCache.get(achunkId)?.content ?? "Chunk not found",
         }
 
         return r
+    }
+
+
+
+    static ClearCache() {
+
+        this.#chunksCache.clear();
+        this.#functionsCache.clear();
+        this.#filesCache.clear();
+        
     }
 
 }
