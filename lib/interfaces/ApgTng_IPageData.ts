@@ -7,6 +7,7 @@
  * @version 0.4 APG 20240731 Language and translations
  * @version 0.5 APG 20240804 Chunks cache + custom CSS
  * @version 1.0 APG 20240813 Custom Head, custom styles and use cache
+ * @version 1.1 APG 20240814 Microservice
  * ----------------------------------------------------------------------------
  */
 
@@ -24,18 +25,7 @@ import {
  */
 export interface ApgTng_IPageData {
 
-    microservice: {
-
-        /**
-         * Name of the microservice [master]
-         */
-        name: string;
-
-        /**
-         * Title of the microservice [master]
-         */
-        title: string;
-    }
+    microservice: Uts.ApgUts_IMicroservice; // @1.1
 
     page: {
 
