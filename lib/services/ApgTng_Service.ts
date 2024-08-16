@@ -28,8 +28,8 @@ type ApgTng_TemplateFunction = (a: any) => string;
 export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
 
-    static override initModuleName() {
-        return this.moduleFromUrl(import.meta.url)
+    static override InitModuleName() {
+        return this.ModuleFromUrl(import.meta.url)
     }
 
     static readonly REMOTE_PREFIX = "http";
@@ -250,9 +250,11 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         anoCache: boolean,
         amaster = ""
     ) {
-        let r = new Uts.ApgUts_Result();
+        const METHOD = this.Method(this.#getTemplate);
+        let r = new Uts.ApgUts_Result<string>();
 
         let templateHtml: string = "";
+
         if (atemplateFile.startsWith(this.REMOTE_PREFIX)) {
             r = await this.#getTemplateFileFromUrl(atemplateFile, anoCache);
         }
@@ -287,9 +289,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         else {
             if (masterTemplate == "") {
                 const message = "Template " + atemplateFile + " does not extend a master template";
-                r.ok = false;
-                r.addMessage(this.#getTemplate.name, message);
-                return r;
+                return r.error(METHOD, message);
             }
 
         }
@@ -341,8 +341,9 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         atemplateFile: string,
         anoCache: boolean
     ) {
+        const METHOD = this.Method(this.#getTemplateFileFromDisk);
+        const r = new Uts.ApgUts_Result<string>();
 
-        const r = new Uts.ApgUts_Result();
         let templateContent = ""
 
         if (this.UseCache && anoCache == false && this.#filesCache.has(atemplateFile)) {
@@ -358,8 +359,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                 templateContent = await Deno.readTextFile(atemplateFile);
                 this.#filesCache.set(atemplateFile, templateContent);
             } catch (e) {
-                r.ok = false;
-                r.addMessage(this.#getTemplateFileFromDisk.name, e.message)
+                r.error(METHOD, e.message)
                 templateContent = this.#geErrorTemplate(atemplateFile, ERROR_TYPE, e.message);
             }
 
@@ -380,8 +380,9 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         anoCache: boolean,
 
     ) {
+        const METHOD = this.Method(this.#getTemplateFileFromUrl);
+        const r = new Uts.ApgUts_Result<string>();
 
-        const r = new Uts.ApgUts_Result();
         let templateContent = ""
 
         if (this.UseCache && anoCache == false && this.#filesCache.has(aurl)) {
@@ -392,6 +393,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         else {
 
             const ERROR_TYPE = "Template remote fetching";
+
             try {
                 const response = await fetch(aurl);
                 if (response.status !== 200) {
@@ -400,8 +402,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                 templateContent = await response.text();
                 this.#filesCache.set(aurl, templateContent);
             } catch (e) {
-                r.ok = false;
-                r.addMessage(this.#getTemplateFileFromUrl.name, e.message)
+                r.error(METHOD, e.message)
                 templateContent = this.#geErrorTemplate(aurl, ERROR_TYPE, e.message);
             }
 
@@ -423,8 +424,8 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         atemplateHtml: string,
         arawJSCode: string[]
     ) {
-
-        const r = new Uts.ApgUts_Result();
+        const METHOD = this.Method(this.#convertTemplateInJs);
+        const r = new Uts.ApgUts_Result<string>();
 
         const firstSplitChunks = atemplateHtml.split("<%");
         let first = true;
@@ -439,10 +440,8 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
             else {
                 const secondSplit = chunk.split("%>");
                 if (secondSplit.length != 2) {
-                    r.ok = false;
                     const message = `The chunk does not contain a properly formatted end markup ( %> ) symbol: ${chunk}`;
-                    r.addMessage(this.#convertTemplateInJs.name, message);
-                    return r;
+                    return r.error(METHOD, message);
                 }
                 const js = this.#convertJsToJs(secondSplit[0])
                 arawJSCode.push(js);
