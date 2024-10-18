@@ -11,7 +11,7 @@
 
 export { ApgTng_Service } from "./services/ApgTng_Service.ts";
 
-export { ApgTng_FormButtons_Component } from "./components/ApgTng_FormButtons_Component.ts";
+export { ApgTng_Component_FormButtons } from "./components/ApgTng_FormButtons_Component.ts";
 export { ApgTng_HiddenValue_Component } from "./components/ApgTng_HiddenValue_Component.ts";
 export { ApgTng_NumericValue_Component } from "./components/ApgTng_NumericValue_Component.ts";
 export { ApgTng_PageMenu_Component } from "./components/ApgTng_PageMenu_Component.ts";

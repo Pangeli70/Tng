@@ -11,7 +11,7 @@ import {
 
 
 
-export class ApgTng_FormButtons_Component implements ApgTng_IComponent {
+export class ApgTng_Component_FormButtons implements ApgTng_IComponent {
 
 
     private _submit: string;
@@ -32,6 +32,7 @@ export class ApgTng_FormButtons_Component implements ApgTng_IComponent {
         r.push(`  <p style="text-align: right;">`);
 
         const cancel = (this._cancel) ? this._cancel : "";
+        const submit = (this._submit) ? this._submit : "";
 
         if (cancel != "") {
             r.push(`
@@ -42,12 +43,13 @@ export class ApgTng_FormButtons_Component implements ApgTng_IComponent {
             >${cancel}</button>`);
         }
 
-        r.push(`
+        if (submit != "") {
+            r.push(`
             <button
                 type="submit"
                 style="width: 10rem; display: inline-block;"
             >${this._submit}</button>`);
-
+        }
 
         r.push("  </p>");
 

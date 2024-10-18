@@ -25,11 +25,11 @@ type ApgTng_TemplateFunction = (a: any) => string;
 /**
  * Modified by APG, starting from the original Drash Template Engine named Jae
  */
-export class ApgTng_Service extends Uts.ApgUts_BaseService {
+export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
-    static override InitModuleName() {
-        return this.ModuleFromUrl(import.meta.url)
+    static override InitServiceName() {
+        return ApgTng_Service.name
     }
 
     static readonly REMOTE_PREFIX = "http";
@@ -96,7 +96,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
     static async Render(
         atemplateData: ApgTng_IPageData,
-        arenderingEvents: Uts.ApgUts_ILogEvent[]
+        arenderingEvents: Uts.ApgUts_ILoggableEvent[]
     ) {
         let result = "";
         let templateFunction: ApgTng_TemplateFunction;
@@ -104,19 +104,19 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         const isLocalTemplate = !atemplateData.page.template.startsWith(this.REMOTE_PREFIX);
 
-        const noCache = atemplateData.cache.useIt == undefined ? false : atemplateData.cache.useIt;
+        const useCache = atemplateData.cache.useIt == undefined ? false : atemplateData.cache.useIt;
 
         const templateFile = (isLocalTemplate) ?
             this.#normalizeTemplateFile(this.TemplatesPath, atemplateData.page.template) :
             atemplateData.page.template;
 
 
-        if (this.UseCache && noCache == false && this.#functionsCache.has(templateFile)) {
+        if (this.UseCache && useCache && this.#functionsCache.has(templateFile)) {
 
             templateFunction = this.#functionsCache.get(templateFile)!;
 
             const message = "Retrieved from cache the function for " + templateFile;
-            const event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
+            const event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
             arenderingEvents.push(event);
 
         }
@@ -124,11 +124,11 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
             const master = atemplateData.page.master ?? "";
 
-            const r = await this.#getTemplateAsJavascript(templateFile, noCache, master);
+            const r = await this.#getTemplateAsJavascript(templateFile, useCache, master);
 
             if (!r.ok) { 
 
-                const event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, r.getMessages());
+                const event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, r.joinMessages());
                 arenderingEvents.push(event);
 
                 result = r.payload as string;
@@ -143,13 +143,13 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                 weHaveNewFunctionToStoreInCache = true;
 
                 const message = "Rebuilt the function for " + templateFile;
-                const event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
+                const event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
                 arenderingEvents.push(event);
 
             } catch (err) {
 
                 const message = "Error in Js conversion:" + err.message;
-                const event = Uts.ApgUts_LogService.LogError(import.meta.url, this.Render, message);
+                const event = Uts.ApgUts_EventFactory.Error(this.SERVICE, this.Render, message);
                 arenderingEvents.push(event);
 
                 return this.#handleJsConversionError(err, templateFile, maybeJs);
@@ -174,18 +174,18 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                 this.#functionsCache.set(templateFile, templateFunction!);
 
                 let message = "Stored in cache the function for " + templateFile;
-                let event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
+                let event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
                 arenderingEvents.push(event);
 
                 message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
-                event = Uts.ApgUts_LogService.LogInfo(import.meta.url, this.Render, message);
+                event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
                 arenderingEvents.push(event);
 
             }
         } catch (err) {
 
             const message = "Error in JS evaluation:" + err.message;
-            const event = Uts.ApgUts_LogService.LogError(import.meta.url, this.Render, message);
+            const event = Uts.ApgUts_EventFactory.Error(this.SERVICE, this.Render, message);
             arenderingEvents.push(event);
 
             result = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
@@ -197,11 +197,11 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
     static async #getTemplateAsJavascript(
         atemplateFile: string,
-        anoCache: boolean,
+        auseCache: boolean,
         amaster: string = ""
     ) {
 
-        let r = await this.#getTemplate(atemplateFile, anoCache, amaster);
+        let r = await this.#getTemplate(atemplateFile, auseCache, amaster);
         if(!r.ok) {
             return r;
         }
@@ -247,7 +247,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
     static async #getTemplate(
         atemplateFile: string,
-        anoCache: boolean,
+        auseCache: boolean,
         amaster = ""
     ) {
         const METHOD = this.Method(this.#getTemplate);
@@ -256,10 +256,10 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
         let templateHtml: string = "";
 
         if (atemplateFile.startsWith(this.REMOTE_PREFIX)) {
-            r = await this.#getTemplateFileFromUrl(atemplateFile, anoCache);
+            r = await this.#getTemplateFileFromUrl(atemplateFile, auseCache);
         }
         else {
-            r = await this.#getTemplateFileFromDisk(atemplateFile, anoCache);
+            r = await this.#getTemplateFileFromDisk(atemplateFile, auseCache);
         }
         if (!r.ok) {
             return r;
@@ -296,11 +296,11 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         let masterHtml = ""
         if (masterTemplate.startsWith(this.REMOTE_PREFIX)) {
-            r = await this.#getTemplateFileFromUrl(masterTemplate, anoCache)
+            r = await this.#getTemplateFileFromUrl(masterTemplate, auseCache)
         }
         else {
             const masterViewName = this.TemplatesPath + masterTemplate
-            r = await this.#getTemplateFileFromDisk(masterViewName, anoCache);
+            r = await this.#getTemplateFileFromDisk(masterViewName, auseCache);
         }
         if (!r.ok) {
             return r;
@@ -320,7 +320,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                     .replace('<% partial("', "")
                     .replace('") %>', "");
                 const partialView = this.TemplatesPath + partialName
-                r = await this.#getTemplateFileFromDisk(partialView, anoCache);
+                r = await this.#getTemplateFileFromDisk(partialView, auseCache);
 
                 if(!r.ok) {
                     return r;
@@ -339,14 +339,14 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
     static async #getTemplateFileFromDisk(
         atemplateFile: string,
-        anoCache: boolean
+        auseCache: boolean
     ) {
         const METHOD = this.Method(this.#getTemplateFileFromDisk);
         const r = new Uts.ApgUts_Result<string>();
 
         let templateContent = ""
 
-        if (this.UseCache && anoCache == false && this.#filesCache.has(atemplateFile)) {
+        if (this.UseCache && auseCache && this.#filesCache.has(atemplateFile)) {
 
             templateContent = this.#filesCache.get(atemplateFile)!;
 
@@ -377,7 +377,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
     static async #getTemplateFileFromUrl(
         aurl: string,
-        anoCache: boolean,
+        auseCache: boolean,
 
     ) {
         const METHOD = this.Method(this.#getTemplateFileFromUrl);
@@ -385,7 +385,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
 
         let templateContent = ""
 
-        if (this.UseCache && anoCache == false && this.#filesCache.has(aurl)) {
+        if (this.UseCache && auseCache && this.#filesCache.has(aurl)) {
 
             templateContent = this.#filesCache.get(aurl)!
 
@@ -540,7 +540,7 @@ export class ApgTng_Service extends Uts.ApgUts_BaseService {
                 <title>ERROR</title>
             </head>
             <body style="margin-left:20%; margin-right:20%; font-family: 'Segoe UI', 'Verdana';">
-                <h1>${this.NAME} ${aerrorType} error!</h1>
+                <h1>${this.SERVICE} ${aerrorType} error!</h1>
                 <h2>In the view: ${atemplateFile}</h2>
                 <h3 style="color:red;">${aerror}</h3>
                 <p>Cut and paste following code as potentially invalid javascript.</p>
