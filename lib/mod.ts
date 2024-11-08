@@ -6,6 +6,7 @@
  * @version 0.3 APG 20230712 Components
  * @version 0.4 APG 20240504 Page menu component + renaming
  * @version 0.5 APG 20240630 ApgTng_IPageData
+ * @version 0.6 APG 2024ii07 IPagination
  * ----------------------------------------------------------------------------
  */
 
@@ -23,5 +24,6 @@ export type { ApgTng_IChunk } from "./interfaces/ApgTng_IChunk.ts";
 export type { ApgTng_IComponent } from "./interfaces/ApgTng_IComponent.ts";
 export type { ApgTng_IHyperlink } from "./interfaces/ApgTng_IHyperlink.ts";
 export type { ApgTng_IPageData } from "./interfaces/ApgTng_IPageData.ts";
+export type { ApgTng_IPagination } from "./interfaces/ApgTng_IPagination.ts";
 export type { ApgTng_ISelectOption } from "./interfaces/ApgTng_ISelectOption.ts";
 

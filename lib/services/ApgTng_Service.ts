@@ -6,6 +6,7 @@
  * @version 0.3 APG 20230712 Improved Regex for JS recognition
  * @version 0.4 APG 20240630 ApgTng_IPageData
  * @version 0.5 APG 20240804 Chunk cache management
+ * @version 1.0 APG 20241107 Updated to state of art of ApgUts
  * ----------------------------------------------------------------------------
  */
 
@@ -67,7 +68,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static Init(
+    static Setup(
         atemplatesPath: string,
         auseCache = false,
         acacheChunksLongerThan = 100
@@ -116,7 +117,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             templateFunction = this.#functionsCache.get(templateFile)!;
 
             const message = "Retrieved from cache the function for " + templateFile;
-            const event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
+            const event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
             arenderingEvents.push(event);
 
         }
@@ -126,9 +127,9 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
             const r = await this.#getTemplateAsJavascript(templateFile, useCache, master);
 
-            if (!r.ok) { 
+            if (!r.ok) {
 
-                const event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, r.joinMessages());
+                const event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, r.joinMessages());
                 arenderingEvents.push(event);
 
                 result = r.payload as string;
@@ -143,13 +144,13 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 weHaveNewFunctionToStoreInCache = true;
 
                 const message = "Rebuilt the function for " + templateFile;
-                const event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
+                const event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
                 arenderingEvents.push(event);
 
             } catch (err) {
 
                 const message = "Error in Js conversion:" + err.message;
-                const event = Uts.ApgUts_EventFactory.Error(this.SERVICE, this.Render, message);
+                const event = Uts.ApgUts_EventFactory.Error(this.name, this.Render.name, message);
                 arenderingEvents.push(event);
 
                 return this.#handleJsConversionError(err, templateFile, maybeJs);
@@ -174,18 +175,18 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 this.#functionsCache.set(templateFile, templateFunction!);
 
                 let message = "Stored in cache the function for " + templateFile;
-                let event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
+                let event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
                 arenderingEvents.push(event);
 
                 message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
-                event = Uts.ApgUts_EventFactory.Info(this.SERVICE, this.Render, message);
+                event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
                 arenderingEvents.push(event);
 
             }
         } catch (err) {
 
             const message = "Error in JS evaluation:" + err.message;
-            const event = Uts.ApgUts_EventFactory.Error(this.SERVICE, this.Render, message);
+            const event = Uts.ApgUts_EventFactory.Error(this.name, this.Render.name, message);
             arenderingEvents.push(event);
 
             result = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
@@ -202,7 +203,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
     ) {
 
         let r = await this.#getTemplate(atemplateFile, auseCache, amaster);
-        if(!r.ok) {
+        if (!r.ok) {
             return r;
         }
         const templateHtml = r.payload as string;
@@ -214,13 +215,13 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
         if (!r.ok) {
             return r;
         }
-        
+
         rawJs.push('return r.join("");');
         rawJs.push('}');
 
         const js = rawJs.join("\r\n");
 
-        r.setPayload(js, 'string')
+        r.setPayload(js)
 
         return r;
     }
@@ -289,7 +290,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
         else {
             if (masterTemplate == "") {
                 const message = "Template " + atemplateFile + " does not extend a master template";
-                return r.error(METHOD, message);
+                return this.Error(r, METHOD, message);
             }
 
         }
@@ -322,7 +323,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 const partialView = this.TemplatesPath + partialName
                 r = await this.#getTemplateFileFromDisk(partialView, auseCache);
 
-                if(!r.ok) {
+                if (!r.ok) {
                     return r;
                 }
                 const partialHtml = r.payload as string;
@@ -331,7 +332,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             }
         }
 
-        r.setPayload(templateHtml, 'string');
+        r.setPayload(templateHtml);
         return r;
     }
 
@@ -365,10 +366,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
         }
 
-        r.setPayload(
-            templateContent,
-            'string'
-        );
+        r.setPayload(templateContent);
 
         return r;
     }
@@ -408,10 +406,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
         }
 
-        r.setPayload(
-            templateContent,
-            'string'
-        );
+        r.setPayload(templateContent);
 
         return r;
 
@@ -441,7 +436,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 const secondSplit = chunk.split("%>");
                 if (secondSplit.length != 2) {
                     const message = `The chunk does not contain a properly formatted end markup ( %> ) symbol: ${chunk}`;
-                    return r.error(METHOD, message);
+                    return this.Error(r, METHOD, message);
                 }
                 const js = this.#convertJsToJs(secondSplit[0])
                 arawJSCode.push(js);
@@ -540,7 +535,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 <title>ERROR</title>
             </head>
             <body style="margin-left:20%; margin-right:20%; font-family: 'Segoe UI', 'Verdana';">
-                <h1>${this.SERVICE} ${aerrorType} error!</h1>
+                <h1>${this.name} ${aerrorType} error!</h1>
                 <h2>In the view: ${atemplateFile}</h2>
                 <h3 style="color:red;">${aerror}</h3>
                 <p>Cut and paste following code as potentially invalid javascript.</p>
@@ -727,7 +722,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
         this.#chunksCache.clear();
         this.#functionsCache.clear();
         this.#filesCache.clear();
-        
+
     }
 
 }
