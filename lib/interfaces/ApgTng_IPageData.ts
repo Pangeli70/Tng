@@ -99,10 +99,10 @@ export interface ApgTng_IPageData {
          * Translations by id for multilanguage support
          * 
          * This can be used like the following
-         * <% page.translations[<id>][page.lang] %> or
-         * <% page.translations.<id>[page.lang] %>
+         * <% page.translations['<id>'] %> or
+         * <% page.translations.<id> %> or
          */
-        translations?: Record<string, Uts.ApgUts_IMultilanguage> // @0.4
+        translations?: Record<string, string> // @0.4
     },
 
     user: {
