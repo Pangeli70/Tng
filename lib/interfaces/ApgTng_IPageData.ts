@@ -25,6 +25,7 @@ import {
  */
 export interface ApgTng_IPageData {
 
+
     microservice: Uts.ApgUts_IMicroservice; // @1.1
 
     page: {
@@ -43,6 +44,11 @@ export interface ApgTng_IPageData {
          * Template file of the page
          */
         template: string;
+
+        /**
+         * Template comes from CDN
+         */
+        isCdnTemplate: boolean;
 
         /**
          * Primary custom css referred to assets host [master]

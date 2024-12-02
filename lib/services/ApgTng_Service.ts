@@ -97,9 +97,11 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
     static async Render(
         atemplateData: ApgTng_IPageData,
-        arenderingEvents: Uts.ApgUts_ILoggableEvent[]
     ) {
-        let result = "";
+        const METHOD = this.Render.name;
+        const events: Uts.ApgUts_ILoggableEvent[] = [];
+
+        let html = "";
         let templateFunction: ApgTng_TemplateFunction;
         let weHaveNewFunctionToStoreInCache = false;
 
@@ -117,8 +119,8 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             templateFunction = this.#functionsCache.get(templateFile)!;
 
             const message = "Retrieved from cache the function for " + templateFile;
-            const event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
-            arenderingEvents.push(event);
+            const event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
+            events.push(event);
 
         }
         else {
@@ -129,11 +131,11 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
             if (!r.ok) {
 
-                const event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, r.joinMessages());
-                arenderingEvents.push(event);
+                const event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, r.joinMessages());
+                events.push(event);
 
-                result = r.payload as string;
-                return result
+                html = r.payload as string;
+                return { html, events }
             }
 
             const maybeJs = r.payload as string;
@@ -144,16 +146,17 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 weHaveNewFunctionToStoreInCache = true;
 
                 const message = "Rebuilt the function for " + templateFile;
-                const event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
-                arenderingEvents.push(event);
+                const event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
+                events.push(event);
 
             } catch (err) {
 
                 const message = "Error in Js conversion:" + err.message;
-                const event = Uts.ApgUts_EventFactory.Error(this.name, this.Render.name, message);
-                arenderingEvents.push(event);
+                const event = Uts.ApgUts_EventFactory.Error(this.name, METHOD, message);
+                events.push(event);
 
-                return this.#handleJsConversionError(err, templateFile, maybeJs);
+                html = this.#handleJsConversionError(err, templateFile, maybeJs);
+                return { html, events }
             }
         }
 
@@ -167,7 +170,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 }
             }
 
-            result = templateFunction!.apply(this, [atemplateData]);
+            html = templateFunction!.apply(this, [atemplateData]);
             // now we are sure that works so we can store! And we store even if use cache flag is false
             // if (this.#useCache && weHaveNewFunctionToStoreInCache) {
             if (weHaveNewFunctionToStoreInCache) {
@@ -175,23 +178,24 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
                 this.#functionsCache.set(templateFile, templateFunction!);
 
                 let message = "Stored in cache the function for " + templateFile;
-                let event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
-                arenderingEvents.push(event);
+                let event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
+                events.push(event);
 
                 message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
-                event = Uts.ApgUts_EventFactory.Info(this.name, this.Render.name, message);
-                arenderingEvents.push(event);
+                event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
+                events.push(event);
 
             }
         } catch (err) {
 
             const message = "Error in JS evaluation:" + err.message;
-            const event = Uts.ApgUts_EventFactory.Error(this.name, this.Render.name, message);
-            arenderingEvents.push(event);
+            const event = Uts.ApgUts_EventFactory.Error(this.name, METHOD, message);
+            events.push(event);
 
-            result = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
+           
+            html = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
         }
-        return result;
+        return { html, events };
     }
 
 
