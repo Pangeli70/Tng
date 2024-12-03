@@ -12,12 +12,8 @@
  */
 
 
-import {
-    Uts
-} from "../deps.ts";
-import {
-    ApgTng_IChunk
-} from "./ApgTng_IChunk.ts";
+import {Uts} from "../deps.ts";
+import {ApgTng_IChunk} from "./ApgTng_IChunk.ts";
 
 
 /**

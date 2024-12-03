@@ -5,12 +5,8 @@
  * ----------------------------------------------------------------------------
  */
 
-import {
-    ApgTng_IComponent
-} from "../interfaces/ApgTng_IComponent.ts";
-import {
-    ApgTng_ISelectOption
-} from "../interfaces/ApgTng_ISelectOption.ts";
+import {ApgTng_IComponent} from "../interfaces/ApgTng_IComponent.ts";
+import {ApgTng_ISelectOption} from "../interfaces/ApgTng_ISelectOption.ts";
 
 
 

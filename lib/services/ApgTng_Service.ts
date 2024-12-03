@@ -10,15 +10,9 @@
  * ----------------------------------------------------------------------------
  */
 
-import {
-    Uts
-} from "../deps.ts";
-import {
-    ApgTng_IChunk
-} from "../interfaces/ApgTng_IChunk.ts";
-import {
-    ApgTng_IPageData
-} from "../interfaces/ApgTng_IPageData.ts";
+import {Uts} from "../deps.ts";
+import {ApgTng_IChunk} from "../interfaces/ApgTng_IChunk.ts";
+import {ApgTng_IPageData} from "../interfaces/ApgTng_IPageData.ts";
 
 type ApgTng_TemplateFunction = (a: any) => string;
 

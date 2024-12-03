@@ -5,15 +5,9 @@
  * ----------------------------------------------------------------------------
  */
 
-import {
-    Uts
-} from "../deps.ts";
-import {
-    ApgTng_IComponent
-} from "../interfaces/ApgTng_IComponent.ts";
-import {
-    ApgTng_IHyperlink
-} from "../interfaces/ApgTng_IHyperlink.ts";
+import {Uts} from "../deps.ts";
+import {ApgTng_IComponent} from "../interfaces/ApgTng_IComponent.ts";
+import {ApgTng_IHyperlink} from "../interfaces/ApgTng_IHyperlink.ts";
 
 
 

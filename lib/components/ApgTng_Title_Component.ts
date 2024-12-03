@@ -5,9 +5,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import {
-    ApgTng_IComponent
-} from "../interfaces/ApgTng_IComponent.ts";
+import {ApgTng_IComponent} from "../interfaces/ApgTng_IComponent.ts";
 
 
 
