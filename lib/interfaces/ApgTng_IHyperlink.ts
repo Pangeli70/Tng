@@ -1,6 +1,6 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
- * @author [APG] Angeli Paolo Giusto
+ * @author [APG] ANGELI Paolo Giusto
  * @version 0.1 APG 20240504
  * @version 0.2 APG 20240804 Reserved flag
  * @version 0.3 APG 20240813 Only for anonymous flag

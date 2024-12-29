@@ -1,6 +1,6 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
- * @author [APG] Angeli Paolo Giusto
+ * @author [APG] ANGELI Paolo Giusto
  * @version 0.1 APG 20240630
  * @version 0.2 APG 20240716 Logo JS
  * @version 0.3 APG 20240727 Master file
