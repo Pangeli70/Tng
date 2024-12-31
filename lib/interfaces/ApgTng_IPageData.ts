@@ -1,13 +1,14 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
  * @author [APG] ANGELI Paolo Giusto
- * @version 0.1 APG 20240630
- * @version 0.2 APG 20240716 Logo JS
- * @version 0.3 APG 20240727 Master file
- * @version 0.4 APG 20240731 Language and translations
- * @version 0.5 APG 20240804 Chunks cache + custom CSS
- * @version 1.0 APG 20240813 Custom Head, custom styles and use cache
- * @version 1.1 APG 20240814 Microservice
+ * @version 0.9.1 APG 20240630
+ * @version 0.9.2 APG 20240716 Logo JS
+ * @version 0.9.3 APG 20240727 Master file
+ * @version 0.9.4 APG 20240731 Language and translations
+ * @version 0.9.5 APG 20240804 Chunks cache + custom CSS
+ * @version 1.0.0 APG 20240813 Custom Head, custom styles and use cache
+ * @version 1.0.1 APG 20240814 Microservice
+ * @version 1.0.2 [APG 2024/12/30] Moving to Deno 2
  * ----------------------------------------------------------------------------
  */
 
@@ -22,14 +23,14 @@ import {ApgTng_IChunk} from "./ApgTng_IChunk.ts";
 export interface ApgTng_IPageData {
 
 
-    microservice: Uts.ApgUts_IMicroservice; // @1.1
+    microservice: Uts.ApgUts_IMicroservice; // @1.0.1
 
     page: {
 
         /**
          * Host for assets. Can be "" for "http://localhost" or a CDN [master]
          */
-        assetsHost: string; // @0.3
+        assetsHost: string; // @0.9.3
 
         /**
          * Master file to be used to build the page
@@ -49,27 +50,27 @@ export interface ApgTng_IPageData {
         /**
          * Primary custom css referred to assets host [master]
          */
-        customCss?: string // @0.4
+        customCss?: string // @0.9.4
 
         /**
          * Custom head. Insert other js or css files references here [master]
          */
-        customHead?: string; // @1.0
+        customHead?: string; // @1.0.0
 
         /**
          * Custom styles for current template [master]
          */
-        customStyles?: string // @1.0
+        customStyles?: string // @1.0.0
 
         /**
          * Favicon for templates referred to assets host [master]
          */
-        favicon: string // @0.3
+        favicon: string // @0.9.3
 
         /**
          * Logo js for templates referred to assets host [master]
          */
-        logoJs: string // @0.2
+        logoJs: string // @0.9.2
 
         /**
          * Title of the page should be already translated [master]
@@ -79,7 +80,7 @@ export interface ApgTng_IPageData {
         /**
          * Language
          */
-        lang: Uts.ApgUts_TLanguage; // @0.4
+        lang: Uts.ApgUts_TLanguage; // @0.9.4
 
         /**
          * Date Time when the page was created
@@ -104,7 +105,7 @@ export interface ApgTng_IPageData {
          * <% page.translations['<id>'] %> or
          * <% page.translations.<id> %> or
          */
-        translations?: Record<string, string> // @0.4
+        translations?: Record<string, string> // @0.9.4
     },
 
     user: {
@@ -121,13 +122,13 @@ export interface ApgTng_IPageData {
 
     }
 
-    cache: { // @0.5
+    cache: { // @0.9.5
 
         /** 
          * Do not use the cache for this template. 
          * It is useful when you are in development
          */
-        useIt: boolean; // @1.0
+        useIt: boolean; // @1.0.0
 
         /**
          * Map by Bryc hash of pre memoized chunks. This is injected by the cache system

@@ -1,8 +1,8 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
- * @description Librerie del monorepo
  * @author [APG] ANGELI Paolo Giusto 
- * @version 0.1 APG 20240421
+ * @version 0.9.1 [APG 2024/04/21]
+ * @version 1.0.0 [APG 2024/12/30] Moving to Deno 2
  * ----------------------------------------------------------------------------
  */
 

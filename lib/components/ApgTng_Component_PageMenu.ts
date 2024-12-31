@@ -1,17 +1,18 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
  * @author [APG] ANGELI Paolo Giusto
- * @version 0.1 APG 20240504
+ * @version 0.9.1 [APG 2024/05/04]
+ * @version 1.0.0 [APG 2024/12/30] Moving to Deno 2
  * ----------------------------------------------------------------------------
  */
 
-import {Uts} from "../deps.ts";
-import {ApgTng_IComponent} from "../interfaces/ApgTng_IComponent.ts";
-import {ApgTng_IHyperlink} from "../interfaces/ApgTng_IHyperlink.ts";
+import { Uts } from "../deps.ts";
+import { ApgTng_IComponent } from "../interfaces/ApgTng_IComponent.ts";
+import { ApgTng_IHyperlink } from "../interfaces/ApgTng_IHyperlink.ts";
 
 
 
-export class ApgTng_PageMenu_Component implements ApgTng_IComponent {
+export class ApgTng_Component_PageMenu implements ApgTng_IComponent {
 
 
     private _items: ApgTng_IHyperlink[];

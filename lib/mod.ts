@@ -1,24 +1,25 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
  * @author [APG] ANGELI Paolo Giusto
- * @version 0.1 APG 20220909 Alpha version
- * @version 0.2 APG 20230416 Moved to its own microservice
- * @version 0.3 APG 20230712 Components
- * @version 0.4 APG 20240504 Page menu component + renaming
- * @version 0.5 APG 20240630 ApgTng_IPageData
- * @version 0.6 APG 2024ii07 IPagination
+ * @version 0.9.1 [APG 2022/09/09] Alpha version
+ * @version 0.9.2 [APG 2023/04/16] Moved to its own microservice
+ * @version 0.9.3 [APG 2023/07/12] Components
+ * @version 0.9.4 [APG 2024/05/04] Page menu component + renaming
+ * @version 0.9.5 [APG 2024/06/30] ApgTng_IPageData
+ * @version 0.9.6 [APG 2024/11/07] IPagination
+ * @version 1.0.0 [APG 2024/12/30] Moving to Deno 2
  * ----------------------------------------------------------------------------
  */
 
 export { ApgTng_Service } from "./services/ApgTng_Service.ts";
 
-export { ApgTng_Component_FormButtons } from "./components/ApgTng_FormButtons_Component.ts";
-export { ApgTng_HiddenValue_Component } from "./components/ApgTng_HiddenValue_Component.ts";
-export { ApgTng_NumericValue_Component } from "./components/ApgTng_NumericValue_Component.ts";
-export { ApgTng_PageMenu_Component } from "./components/ApgTng_PageMenu_Component.ts";
-export { ApgTng_Select_Component } from "./components/ApgTng_Select_Component.ts";
-export { ApgTng_TextValue_Component } from "./components/ApgTng_TextValue_Component.ts";
-export { ApgTng_Title_Component } from "./components/ApgTng_Title_Component.ts";
+export { ApgTng_Component_FormButtons } from "./components/ApgTng_Component_FormButtons.ts";
+export { ApgTng_Component_HiddenValue } from "./components/ApgTng_Component_HiddenValue.ts";
+export { ApgTng_Component_NumericValue } from "./components/ApgTng_Component_NumericValue.ts";
+export { ApgTng_Component_PageMenu } from "./components/ApgTng_Component_PageMenu.ts";
+export { ApgTng_Component_Select } from "./components/ApgTng_Component_Select.ts";
+export { ApgTng_Component_TextValue } from "./components/ApgTng_Component_TextValue.ts";
+export { ApgTng_Component_Title } from "./components/ApgTng_Component_Title.ts";
 
 export type { ApgTng_IChunk } from "./interfaces/ApgTng_IChunk.ts";
 export type { ApgTng_IComponent } from "./interfaces/ApgTng_IComponent.ts";

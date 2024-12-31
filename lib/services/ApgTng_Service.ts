@@ -1,18 +1,19 @@
 /** ---------------------------------------------------------------------------
  * @module [ApgTng]
  * @author [APG] ANGELI Paolo Giusto
- * @version 0.1 APG 20220909 Alpha version
- * @version 0.2 APG 20230416 Moved to its own microservice
- * @version 0.3 APG 20230712 Improved Regex for JS recognition
- * @version 0.4 APG 20240630 ApgTng_IPageData
- * @version 0.5 APG 20240804 Chunk cache management
- * @version 1.0 APG 20241107 Updated to state of art of ApgUts
+ * @version 0.9.1 [APG 2022/09/09] Alpha version
+ * @version 0.9.2 [APG 2023/04/16] Moved to its own microservice
+ * @version 0.9.3 [APG 2023/07/12] Improved Regex for JS recognition
+ * @version 0.9.4 [APG 2024/06/30] ApgTng_IPageData
+ * @version 0.9.5 [APG 2024/08/04] Chunk cache management
+ * @version 1.0.0 [APG 2024/11/07] Updated to state of art of ApgUts
+ * @version 1.0.1 [APG 2024/12/30] Moving to Deno 2 + Better events tracing
  * ----------------------------------------------------------------------------
  */
 
-import {Uts} from "../deps.ts";
-import {ApgTng_IChunk} from "../interfaces/ApgTng_IChunk.ts";
-import {ApgTng_IPageData} from "../interfaces/ApgTng_IPageData.ts";
+import { Uts } from "../deps.ts";
+import { ApgTng_IChunk } from "../interfaces/ApgTng_IChunk.ts";
+import { ApgTng_IPageData } from "../interfaces/ApgTng_IPageData.ts";
 
 type ApgTng_TemplateFunction = (a: any) => string;
 
@@ -59,6 +60,11 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
      * Caching mechanisms flag. Default is false.
      */
     static UseCache = false;
+
+    /**
+     * Log events flag. Default is false.
+     */
+    static LogInfoEvents = false; //@ V1.0.1
 
 
 
@@ -111,10 +117,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
         if (this.UseCache && useCache && this.#functionsCache.has(templateFile)) {
 
             templateFunction = this.#functionsCache.get(templateFile)!;
-
-            const message = "Retrieved from cache the function for " + templateFile;
-            const event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
-            events.push(event);
+            events.push(this.#jsFunctionRetrievedFromCacheEvent(templateFile, METHOD));
 
         }
         else {
@@ -125,11 +128,10 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
             if (!r.ok) {
 
-                const event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, r.joinMessages());
-                events.push(event);
-
-                html = r.payload as string;
+                events.push(this.#getTemplateAsJsErrorEvent(r.joinMessages(), METHOD));
+                html = r.payload!;
                 return { html, events }
+
             }
 
             const maybeJs = r.payload as string;
@@ -138,19 +140,14 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
                 templateFunction = new Function("templateData", maybeJs) as ApgTng_TemplateFunction;
                 weHaveNewFunctionToStoreInCache = true;
-
-                const message = "Rebuilt the function for " + templateFile;
-                const event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
-                events.push(event);
+                events.push(this.#jsFunctionCreatedEvent(templateFile, METHOD));
 
             } catch (err) {
 
-                const message = "Error in Js conversion:" + err.message;
-                const event = Uts.ApgUts_EventFactory.Error(this.name, METHOD, message);
-                events.push(event);
-
+                events.push(this.#jsFunctionCreationErrorEvent(err, METHOD));
                 html = this.#handleJsConversionError(err, templateFile, maybeJs);
                 return { html, events }
+
             }
         }
 
@@ -165,31 +162,107 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             }
 
             html = templateFunction!.apply(this, [atemplateData]);
-            // now we are sure that works so we can store! And we store even if use cache flag is false
-            // if (this.#useCache && weHaveNewFunctionToStoreInCache) {
+            // NOTE: No error since here, the funcion is valid JS and we applied it
+            // so now we are sure that we can store! And we store even if use cache flag is false
+            // because we want to inspect the results -- APG 20241230
             if (weHaveNewFunctionToStoreInCache) {
 
                 this.#functionsCache.set(templateFile, templateFunction!);
 
-                let message = "Stored in cache the function for " + templateFile;
-                let event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
-                events.push(event);
-
-                message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
-                event = Uts.ApgUts_EventFactory.Info(this.name, METHOD, message);
-                events.push(event);
+                events.push(this.#jsFunctionInCacheEvent(templateFile, METHOD));
+                events.push(this.#CacheResumeEvent(METHOD));
 
             }
         } catch (err) {
 
-            const message = "Error in JS evaluation:" + err.message;
-            const event = Uts.ApgUts_EventFactory.Error(this.name, METHOD, message);
-            events.push(event);
-
-           
+            events.push(this.#jsEvaluationErrorEvent(err, METHOD));
             html = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
+
         }
         return { html, events };
+    }
+
+
+
+    static #jsEvaluationErrorEvent(
+        aerr: Error,
+        amethod: string
+    ) {
+        const message = "Error in JS evaluation:" + aerr.message;
+        const event = Uts.ApgUts_EventFactory.Error(this.name, amethod, message);
+        this.LogEvent(event);
+        return event;
+    }
+
+
+
+    static #CacheResumeEvent(
+        amethod: string
+    ) {
+        const message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
+        const event = Uts.ApgUts_EventFactory.Info(this.name, amethod, message);
+        if (this.LogInfoEvents) this.LogEvent(event);
+        return event;
+    }
+
+
+
+    static #jsFunctionRetrievedFromCacheEvent(
+        atemplateFile: string,
+        amethod: string
+    ) {
+        const message = "Retrieved from cache the function for " + atemplateFile;
+        const event = Uts.ApgUts_EventFactory.Info(this.name, amethod, message);
+        if (this.LogInfoEvents) this.LogEvent(event);
+        return event;
+    }
+
+
+
+    static #jsFunctionInCacheEvent(
+        atemplateFile: string,
+        amethod: string
+    ) {
+        const message = "Stored in cache the function for " + atemplateFile;
+        const event = Uts.ApgUts_EventFactory.Info(this.name, amethod, message);
+        if (this.LogInfoEvents) this.LogEvent(event);
+        return event;
+    }
+
+
+
+    static #jsFunctionCreationErrorEvent(
+        aerr: Error,
+        amethod: string
+    ) {
+        const message = "Error in Js conversion:" + aerr.message;
+        const event = Uts.ApgUts_EventFactory.Error(this.name, amethod, message);
+        this.LogEvent(event);
+        return event;
+    }
+
+
+
+    static #jsFunctionCreatedEvent(
+        atemplateFile: string,
+        amethod: string
+    ) {
+        const message = "Rebuilt the function for " + atemplateFile;
+        const event = Uts.ApgUts_EventFactory.Info(this.name, amethod, message);
+        if (this.LogInfoEvents) this.LogEvent(event);
+        return event;
+    }
+
+
+
+    static #getTemplateAsJsErrorEvent(
+        amessage: string,
+        amethod: string
+    ) {
+
+        const event = Uts.ApgUts_EventFactory.Info(this.name, amethod, amessage);
+        if (this.LogInfoEvents) this.LogEvent(event);
+        return event;
     }
 
 
