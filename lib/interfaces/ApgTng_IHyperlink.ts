@@ -27,6 +27,8 @@ export interface ApgTng_IHyperlink {
 
     isReserved: boolean; // @0.9.2
 
+    role?: string; // @1.0.0
+
     isAnonymousOnly?: boolean; // @0.9.3
 
     children?: ApgTng_IHyperlink[]; // @0.9.4
