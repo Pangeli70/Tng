@@ -9,6 +9,7 @@
  * @version 1.0.0 APG 20240813 Custom Head, custom styles and use cache
  * @version 1.0.1 APG 20240814 Microservice
  * @version 1.0.2 [APG 2024/12/30] Moving to Deno 2
+ * @version 1.0.3 [APG 2025/03/09] Separate CDN master and template
  * ----------------------------------------------------------------------------
  */
 
@@ -28,9 +29,19 @@ export interface ApgTng_IPageData {
     page: {
 
         /**
-         * Host for assets. Can be "" for "http://localhost" or a CDN [master]
+         * Host for assets (css, js, etc). Can be "" for "http://localhost" or a CDN [master]
          */
         assetsHost: string; // @0.9.3
+
+        /**
+         * Master file host. Can be "" for "http://localhost" or a CDN
+         */
+        masterHost: string; // @1.0.3
+
+        /**
+         * Master file path.
+         */
+        masterPath: string; // @1.0.3
 
         /**
          * Master file to be used to build the page
@@ -38,14 +49,32 @@ export interface ApgTng_IPageData {
         master: string;
 
         /**
+         * Master file and its partials are coming from CDN
+         */
+        isCdnMaster: boolean; // @1.0.3
+
+
+        /**
+         * Template file host. Can be "" for "http://localhost" or a CDN
+         */
+        templateHost: string; // @1.0.3
+
+        /**
+         * Template file path.
+         */
+        templatePath: string; // @1.0.3
+
+
+        /**
          * Template file of the page
          */
         template: string;
 
         /**
-         * Template comes from CDN
+         * Template file and its partials are coming from CDN
          */
         isCdnTemplate: boolean;
+
 
         /**
          * Primary custom css referred to assets host [master]

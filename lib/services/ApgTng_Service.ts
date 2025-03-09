@@ -8,6 +8,7 @@
  * @version 0.9.5 [APG 2024/08/04] Chunk cache management
  * @version 1.0.0 [APG 2024/11/07] Updated to state of art of ApgUts
  * @version 1.0.1 [APG 2024/12/30] Moving to Deno 2 + Better events tracing
+ * @version 1.0.2 [APG 2025/03/09] Corrected partials loading from CDN
  * ----------------------------------------------------------------------------
  */
 
@@ -47,9 +48,9 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
     static #functionsCache: Map<string, ApgTng_TemplateFunction> = new Map();
 
     /**
-     * Path to the templates folder, can be local or remote
+     * Path to the templates folder
      */
-    static TemplatesPath = "./srv/templates";
+    static LocalTemplatesPath = "./srv/templates";
 
     /**
      * Minimum size of the chunk in chararacters to get in the cache. Default is 100
@@ -73,7 +74,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
         auseCache = false,
         acacheChunksLongerThan = 100
     ) {
-        this.TemplatesPath = atemplatesPath;
+        this.LocalTemplatesPath = atemplatesPath;
         this.ChunkSize = acacheChunksLongerThan;
         this.UseCache = auseCache;
     }
@@ -105,30 +106,24 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
         let templateFunction: ApgTng_TemplateFunction;
         let weHaveNewFunctionToStoreInCache = false;
 
-        const isLocalTemplate = !atemplateData.page.template.startsWith(this.REMOTE_PREFIX);
-
         const useCache = atemplateData.cache.useIt == undefined ? false : atemplateData.cache.useIt;
 
-        const templateFile = (isLocalTemplate) ?
-            this.#normalizeTemplateFile(this.TemplatesPath, atemplateData.page.template) :
-            atemplateData.page.template;
+        const templateFile = atemplateData.page.template;
 
 
         if (this.UseCache && useCache && this.#functionsCache.has(templateFile)) {
 
             templateFunction = this.#functionsCache.get(templateFile)!;
-            events.push(this.#jsFunctionRetrievedFromCacheEvent(templateFile, METHOD));
+            events.push(this.#newEvent_jsFunctionRetrievedFromCache(templateFile, METHOD));
 
         }
         else {
 
-            const master = atemplateData.page.master ?? "";
-
-            const r = await this.#getTemplateAsJavascript(templateFile, useCache, master);
+            const r = await this.#getTemplateAsJavascript(atemplateData, useCache);
 
             if (!r.ok) {
 
-                events.push(this.#getTemplateAsJsErrorEvent(r.joinMessages(), METHOD));
+                events.push(this.#newEvent_getTemplateAsJsError(r.joinMessages(), METHOD));
                 html = r.payload!;
                 return { html, events }
 
@@ -140,11 +135,12 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
                 templateFunction = new Function("templateData", maybeJs) as ApgTng_TemplateFunction;
                 weHaveNewFunctionToStoreInCache = true;
-                events.push(this.#jsFunctionCreatedEvent(templateFile, METHOD));
+                events.push(this.#newEvent_jsFunctionCreated(templateFile, METHOD));
 
-            } catch (err) {
+            } catch (e) {
 
-                events.push(this.#jsFunctionCreationErrorEvent(err, METHOD));
+                const err = e as Error;
+                events.push(this.#newEvent_jsFunctionCreationError(err, METHOD));
                 html = this.#handleJsConversionError(err, templateFile, maybeJs);
                 return { html, events }
 
@@ -169,13 +165,14 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
                 this.#functionsCache.set(templateFile, templateFunction!);
 
-                events.push(this.#jsFunctionInCacheEvent(templateFile, METHOD));
-                events.push(this.#CacheResumeEvent(METHOD));
+                events.push(this.#newEvent_jsFunctionInCache(templateFile, METHOD));
+                events.push(this.#newEvent_CacheStatus(METHOD));
 
             }
-        } catch (err) {
+        } catch (e) {
 
-            events.push(this.#jsEvaluationErrorEvent(err, METHOD));
+            const err = e as Error;
+            events.push(this.#newEvent_jsEvaluationError(err, METHOD));
             html = this.#handleJsInterpolationError(err, templateFile, templateFunction!.toString());
 
         }
@@ -184,7 +181,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #jsEvaluationErrorEvent(
+    static #newEvent_jsEvaluationError(
         aerr: Error,
         amethod: string
     ) {
@@ -196,7 +193,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #CacheResumeEvent(
+    static #newEvent_CacheStatus(
         amethod: string
     ) {
         const message = "Cache now contains " + this.#functionsCache.size.toString() + " functions.";
@@ -207,7 +204,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #jsFunctionRetrievedFromCacheEvent(
+    static #newEvent_jsFunctionRetrievedFromCache(
         atemplateFile: string,
         amethod: string
     ) {
@@ -219,7 +216,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #jsFunctionInCacheEvent(
+    static #newEvent_jsFunctionInCache(
         atemplateFile: string,
         amethod: string
     ) {
@@ -231,7 +228,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #jsFunctionCreationErrorEvent(
+    static #newEvent_jsFunctionCreationError(
         aerr: Error,
         amethod: string
     ) {
@@ -243,7 +240,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #jsFunctionCreatedEvent(
+    static #newEvent_jsFunctionCreated(
         atemplateFile: string,
         amethod: string
     ) {
@@ -255,11 +252,10 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #getTemplateAsJsErrorEvent(
+    static #newEvent_getTemplateAsJsError(
         amessage: string,
         amethod: string
     ) {
-
         const event = Uts.ApgUts_EventFactory.Info(this.name, amethod, amessage);
         if (this.LogInfoEvents) this.LogEvent(event);
         return event;
@@ -268,15 +264,17 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
     static async #getTemplateAsJavascript(
-        atemplateFile: string,
+        atemplateData: ApgTng_IPageData,
         auseCache: boolean,
-        amaster: string = ""
     ) {
 
-        let r = await this.#getTemplate(atemplateFile, auseCache, amaster);
+        const atemplateFile = atemplateData.page.template;
+
+        let r = await this.#getTemplateHtml(atemplateData, auseCache);
         if (!r.ok) {
             return r;
         }
+
         const templateHtml = r.payload as string;
         const rawJs: string[] = [];
         rawJs.push("with(templateData) {");
@@ -299,113 +297,170 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
 
 
-    static #normalizeTemplateFile(
-        atemplatesPath: string,
-        atemplateFile: string
+
+    static #normalizeTemplatePath(
+        ahost: string,
+        aroot: string,
+        afile: string
     ) {
-        if (this.TemplatesPath.endsWith("/") && atemplateFile.startsWith("/")) {
-            atemplatesPath += atemplateFile.slice(1);
+        let r = ahost;
+
+        if (ahost.endsWith("/") && aroot.startsWith("/")) {
+            r += aroot.slice(1);
         }
-        else if (!this.TemplatesPath.endsWith("/") && !atemplateFile.startsWith("/")) {
-            atemplatesPath += `/${atemplateFile}`;
+        else if (!ahost.endsWith("/") && !aroot.startsWith("/")) {
+            r += `/${aroot}`;
         }
         else {
-            atemplatesPath += atemplateFile;
+            r += aroot;
         }
-        return atemplatesPath;
+
+        if (r.endsWith("/") && afile.startsWith("/")) {
+            r += afile.slice(1);
+        }
+        else if (!r.endsWith("/") && !afile.startsWith("/")) {
+            r += `/${afile}`;
+        }
+        else {
+            r += afile;
+        }
+
+        return r;
+    }
+
+
+
+
+    static async #getTemplateHtml(
+        atemplateData: ApgTng_IPageData,
+        auseCache: boolean,
+    ) {
+        let r = new Uts.ApgUts_Result<string>();
+
+
+        r = await ApgTng_Service.#getMaster(atemplateData, auseCache);
+        if (!r.ok) {
+            return r;
+        }
+        let masterHtml = r.payload as string;
+
+
+        r = await this.#getPartials(
+            masterHtml,
+            atemplateData.page.masterHost,
+            atemplateData.page.masterPath,
+            atemplateData.page.isCdnMaster,
+            auseCache
+        )
+        if (!r.ok) {
+            return r;
+        }
+        masterHtml = r.payload as string;
+
+
+        r = await ApgTng_Service.#getTemplate(atemplateData, auseCache);
+        if (!r.ok) {
+            return r;
+        }
+        let templateHtml = r.payload as string;
+
+        r = await this.#getPartials(
+            templateHtml,
+            atemplateData.page.templateHost,
+            atemplateData.page.templatePath,
+            atemplateData.page.isCdnTemplate,
+            auseCache
+        )
+        if (!r.ok) {
+            return r;
+        }
+        templateHtml = r.payload as string;
+
+
+        // insert the page template in the master template
+        const mergedHtml = masterHtml.replace("<% yield %>", templateHtml);
+
+
+        r.setPayload(mergedHtml);
+
+        return r;
     }
 
 
 
     static async #getTemplate(
-        atemplateFile: string,
+        atemplateData: ApgTng_IPageData,
         auseCache: boolean,
-        amaster = ""
     ) {
-        const METHOD = this.Method(this.#getTemplate);
-        let r = new Uts.ApgUts_Result<string>();
 
-        let templateHtml: string = "";
+        let r: Uts.ApgUts_Result<string>;
 
-        if (atemplateFile.startsWith(this.REMOTE_PREFIX)) {
+        const atemplateFile = this.#normalizeTemplatePath(
+            atemplateData.page.templateHost,
+            atemplateData.page.templatePath,
+            atemplateData.page.template
+        );
+
+        if (atemplateData.page.isCdnTemplate) {
             r = await this.#getTemplateFileFromUrl(atemplateFile, auseCache);
         }
         else {
             r = await this.#getTemplateFileFromDisk(atemplateFile, auseCache);
         }
-        if (!r.ok) {
-            return r;
-        }
-
-        templateHtml = r.payload as string;
-
-        let masterTemplate = "";
-
-        // Check if the template extends another template typically a master page
-        const extended = templateHtml.match(/<% extends.* %>/g);
-
-        if (extended) {
-            // Look for all the ancestors
-            for (let i = 0; i < extended.length; i++) {
-
-                const match = extended[i];
-                templateHtml = templateHtml.replace(match, "");
-                masterTemplate = match.replace('<% extends("', "").replace('") %>', "");
-
-            }
-        }
-
-        if (amaster !== "") {
-            masterTemplate = amaster;
-        }
-        else {
-            if (masterTemplate == "") {
-                const message = "Template " + atemplateFile + " does not extend a master template";
-                return this.Error(r, METHOD, message);
-            }
-
-        }
-
-        let masterHtml = ""
-        if (masterTemplate.startsWith(this.REMOTE_PREFIX)) {
-            r = await this.#getTemplateFileFromUrl(masterTemplate, auseCache)
-        }
-        else {
-            const masterViewName = this.TemplatesPath + masterTemplate
-            r = await this.#getTemplateFileFromDisk(masterViewName, auseCache);
-        }
-        if (!r.ok) {
-            return r;
-        }
-
-        masterHtml = r.payload as string;
-        // insert the current template in the ancestor's
-        templateHtml = masterHtml.replace("<% yield %>", templateHtml);
-
-
-        // Check recursively for partials means this template has child templates or component views
-        let partials;
-        while ((partials = templateHtml.match(/<% partial.* %>/g))) {
-            for (let i = 0; i < partials.length; i++) {
-                const match = partials[i];
-                const partialName = match
-                    .replace('<% partial("', "")
-                    .replace('") %>', "");
-                const partialView = this.TemplatesPath + partialName
-                r = await this.#getTemplateFileFromDisk(partialView, auseCache);
-
-                if (!r.ok) {
-                    return r;
-                }
-                const partialHtml = r.payload as string;
-                //insert the partial html inside the template
-                templateHtml = templateHtml.replace(match, partialHtml);
-            }
-        }
-
-        r.setPayload(templateHtml);
         return r;
     }
+
+
+
+    static async #getMaster(
+        atemplateData: ApgTng_IPageData,
+        auseCache: boolean,
+    ) {
+
+        let r: Uts.ApgUts_Result<string>;
+
+        const amasterFile = this.#normalizeTemplatePath(
+            atemplateData.page.masterHost,
+            atemplateData.page.masterPath,
+            atemplateData.page.master
+        );
+
+        if (atemplateData.page.isCdnMaster) {
+            r = await this.#getTemplateFileFromUrl(amasterFile, auseCache);
+        }
+        else {
+            r = await this.#getTemplateFileFromDisk(amasterFile, auseCache);
+        }
+        return r;
+    }
+
+
+
+    static async #getPartial(
+        ahost: string,
+        apath: string,
+        afile: string,
+        aisCdn: boolean,
+        auseCache: boolean,
+    ) {
+
+        let r: Uts.ApgUts_Result<string>;
+
+        const apartialFile = this.#normalizeTemplatePath(
+            ahost,
+            apath,
+            afile
+        );
+
+        if (aisCdn) {
+            r = await this.#getTemplateFileFromUrl(apartialFile, auseCache);
+        }
+        else {
+            r = await this.#getTemplateFileFromDisk(apartialFile, auseCache);
+        }
+        return r;
+    }
+
 
 
 
@@ -428,11 +483,15 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             const ERROR_TYPE = "Template local fetching";
 
             try {
+
                 templateContent = await Deno.readTextFile(atemplateFile);
                 this.#filesCache.set(atemplateFile, templateContent);
+
             } catch (e) {
-                r.error(METHOD, e.message)
-                templateContent = this.#geErrorTemplate(atemplateFile, ERROR_TYPE, e.message);
+                const err = e as Error;
+                r.error(METHOD, err.message)
+                templateContent = this.#geErrorTemplate(atemplateFile, ERROR_TYPE, err.message);
+
             }
 
         }
@@ -464,15 +523,20 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             const ERROR_TYPE = "Template remote fetching";
 
             try {
+
                 const response = await fetch(aurl);
                 if (response.status !== 200) {
                     throw new Error(`HTTP error! fetching ${aurl} - status: ${response.status}`);
                 }
                 templateContent = await response.text();
                 this.#filesCache.set(aurl, templateContent);
+
             } catch (e) {
-                r.error(METHOD, e.message)
-                templateContent = this.#geErrorTemplate(aurl, ERROR_TYPE, e.message);
+
+                const err = e as Error;
+                r.error(METHOD, err.message)
+                templateContent = this.#geErrorTemplate(aurl, ERROR_TYPE, err.message);
+
             }
 
         }
@@ -481,6 +545,47 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
 
         return r;
 
+    }
+
+
+
+    static async #getPartials(
+        acurrentHtml: string,
+        ahost: string,
+        apath: string,
+        aisCdn: boolean,
+        auseCache: boolean,
+
+    ) {
+
+        let r = new Uts.ApgUts_Result<string>();
+
+        // Check recursively for partials
+        // Do in a while loop because the partials can be nested
+        let partials;
+        while ((partials = acurrentHtml.match(/<% partial.* %>/g))) {
+
+            for (let i = 0; i < partials.length; i++) {
+
+                const match = partials[i];
+                const partialFile = match
+                    .replace('<% partial("', "")
+                    .replace('") %>', "");
+
+                r = await this.#getPartial(ahost, apath, partialFile, aisCdn, auseCache)
+                if (!r.ok) {
+                    return r;
+                }
+                const partialHtml = r.payload as string;
+
+                //insert the partial template inside the currente template
+                acurrentHtml = acurrentHtml.replace(match, partialHtml);
+            }
+        }
+
+        r.setPayload(acurrentHtml);
+
+        return r;
     }
 
 
@@ -627,6 +732,7 @@ export class ApgTng_Service extends Uts.ApgUts_Service {
             .replaceAll(" ", "&nbsp;")
             .replaceAll("\n", "\n&nbsp;&nbsp;");
     }
+
 
 
     static #handleJsConversionError(
